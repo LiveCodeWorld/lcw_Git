@@ -1,0 +1,93 @@
+﻿script "Global | Gist | Menu"
+--> MetaData
+-
+license: GPLv3
+name: Global | Gist | Menu
+type: controller
+version: 0.4
+gist: https://gist.github.com/opn/9b9d8362dbc267ac7348ec64e11fb54c
+
+
+--> Display | Events
+-
+command gistMouseUp indexView, someLine
+   put someLine
+end gistMouseUp
+
+command gistMouseDoubleUp indexView, someLine
+   answer someLine
+end gistMouseDoubleUp
+
+
+--> Global | Gist | Menu
+-
+on menu_DisplayGists
+   set the cursor to watch
+   put gist_FetchFiles() into gistList
+   display_Index gistList, "gist_FetchFiles(),Gists", "Global | Gist | Menu", "Global | Gist | Line | Menu", "gistMouseUp", "gistMouseDoubleUp"
+end menu_DisplayGists
+
+on menu_DisplayScripts
+   set the cursor to watch
+   put gist_FetchFiles() into gistList
+   filter gistList with "script,*"
+   
+   display_Index gistList, "gist_FetchFiles(),Gists", "Global | Gist | Menu", "Global | Gist | Line | Menu", "gistMouseUp", "gistMouseDoubleUp"
+end menu_DisplayScripts
+
+on menu_DisplayControllers mTarget
+   set the cursor to watch
+   put gist_FetchFiles ("controller") into gistList
+   
+   display_Index gistList, "gist_FetchFiles(),Gists", "Global | Gist | Menu", "Global | Gist | Line | Menu", "gistMouseUp", "gistMouseDoubleUp"
+end menu_DisplayControllers
+
+on _
+end _
+
+on menu_SaveScriptAsGist scriptObject   
+   put hkey_FetchHelp (hKey) into helpText
+   put html_StripAllTags (helpText) into helpText
+   put merge ("Give a description for [[scriptObject]]...") into someComment
+   put opn_Ask (someComment, helpText) into pGistHelp
+   
+   gist_SaveObjectScript scriptObject, pGistHelp
+   put the result into gistReplyArray
+   display_Array gistReplyArray, scriptObject
+   
+   put gistReplyArray ["html_url"] into htmlURL
+   if htmlURL is not empty then
+      launch url htmlURL
+   end if
+end menu_SaveScriptAsGist
+
+on _
+end _
+
+on menu_SetGithubApiToken
+   put github_GetApiToken () into githubApiToken
+   put opn_Ask ("Enter your token for the GitHubApi...", githubApiToken) into githubApiToken
+   github_SetApiToken gitHubApiToken
+   answer "Stored GitHub API token in your preferences"
+end menu_SetGithubApiToken
+
+on menu_GitHubApiTokenDocs
+   launch url "https://github.com/settings/tokens"
+end menu_GitHubApiTokenDocs
+
+on _
+end _
+
+on menu_LaunchGithubApiDocumentation
+   launch url "https://developer.github.com/v3/"
+end menu_LaunchGithubApiDocumentation
+
+on menu_LaunchGist mTarget, launchWhat
+   gist_Launch launchWhat
+end menu_LaunchGist
+
+
+getprop launch_Whats
+   return "My Gists,API"
+end launch_Whats
+

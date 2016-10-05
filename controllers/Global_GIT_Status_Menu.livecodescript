@@ -13,27 +13,11 @@ local LocalArray
 
 --> Menu | Props
 -
-getprop menu_Target [mTitlePath]
-   if mTitlePath contains "Global | Git | Stack | Menu" then
-      return the displayed_Object of me
-   else if mTitlePath contains "GIT | Line | Menu" then
-      put the git_Tree of me into cardTree
-      put the tree_SelectedIndex of cardTree into relPathLine
-      set the itemdelimiter to ":"
-      switch item 1 of relPathLine
-         case "unmerged"
-            delete item 1 of relPathLine
-            put word 1 to -1 of relPathLine into shortFile
-            return git_GetRootFolder() & shortFile
-         case "new file"
-            delete item 1 of relPathLine
-            put word 1 to -1 of relPathLine into shortFile
-            return git_GetRootFolder() & shortFile
-      end switch
-   else
-      pass menu_Target
-   end if
-end menu_Target
+on menu_Init tObject
+   put the display_View of tObject into displayView
+   put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
+   put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitCheckoutFolder"]
+end menu_Init
 
 
 --> Global | GIT | Status | Menu
@@ -43,33 +27,32 @@ on menu_SelectProject indexView, gitProjectName
    
    put project_GetFolder (gitProjectName) into gitCheckoutFolder
    
-   git_SetRootFolder gitCheckoutFolder
-   put gitCheckoutFolder into LocalArray ["gitCheckoutFolder"]
    put gitProjectName into LocalArray ["gitProjectName"]
    
    put the stack_Object of indexView into stackObject
    set the label of stackObject to gitProjectName
 end menu_SelectProject
 
-on menu_AddAllUntracked
-   -- put the shiftKey is "Down" into shiftStatus
+on menu_DisplayGitProjectArray
+   put git_GetProjectArray() into gitProjectArray
+   display_Array gitProjectArray
+end menu_DisplayGitProjectArray
+
+on menu_AddAllUntracked arrayView
    set the cursor to watch
-   
-   put LocalArray ["gitProjectName"] into gitProjectName
-   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   
+   put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
    put "git add --all" into someShell
    put git_ExecuteShellCommand (someShell, gitCheckoutFolder) into shellResult
-   
    lcw_Notify shellResult
-   -- if shiftStatus is false then git_RefreshDisplay
-   display_GitStatus gitProjectName
+   display_GitFolderStatus gitCheckoutFolder, arrayView
+   put the result into arrayView
 end menu_AddAllUntracked
 
 on menu_StageThenCommit
    -- put the shiftKey is "Down" into shiftStatus
    put LocalArray ["gitProjectName"] into gitProjectName
-   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   -- put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   put git_GetRootFolder() into gitCheckoutFolder
    
    put lcw_Ask ("Comment on this change...") into someComment
    git_CommitChanges someComment, gitCheckoutFolder
@@ -133,8 +116,6 @@ on menu_Pull
    display_Lines shellResult, someShell
    
    stack_RevertLoaded
-   dispatch "library_StopEnvironment" to stack "OPN"
-   dispatch "library_StartEnvironment" to stack "OPN"
    
    put the result into displayView
    set the menu_Title of displayView to "Global | Git | Pull | Menu"
@@ -191,16 +172,43 @@ end menu_StackHistoryMenu
 
 -- on submenu_Development
 return "GIT | Dev | Menu"
- submenu_Development
+submenu_Development
 
 
 --> Global | GIT | Status | Menu | Props
 -
 getprop git_ProjectName
-   return LocalArray ["gitProjectName"]
+   put git_GetRootFolder() into gitCheckoutFolder
+   return gitCheckoutFolder
+   -- return LocalArray ["gitProjectName"]
 end git_ProjectName
 
 getprop git_ProjectNames
    put library_ListProjectNames() into projectNames
    return projectNames
 end git_ProjectNames
+
+
+--> Menu | Props
+-
+-- getprop menu_Target [mTitlePath]
+if mTitlePath contains "Global | Git | Stack | Menu" then
+   return the displayed_Object of me
+else if mTitlePath contains "GIT | Line | Menu" then
+   put the git_Tree of me into cardTree
+   put the tree_SelectedIndex of cardTree into relPathLine
+   set the itemdelimiter to ":"
+   switch item 1 of relPathLine
+      case "unmerged"
+         delete item 1 of relPathLine
+         put word 1 to -1 of relPathLine into shortFile
+         return git_GetRootFolder() & shortFile
+      case "new file"
+         delete item 1 of relPathLine
+         put word 1 to -1 of relPathLine into shortFile
+         return git_GetRootFolder() & shortFile
+   end switch
+else
+   pass menu_Target
+end if
+end menu_Target

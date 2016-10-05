@@ -14,6 +14,51 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 
 --> Working On
 -
+function git_FindRepos
+   put git_FindInvisibleGitFolders() into gitFiles
+   set the itemdelimiter to slash
+   repeat for each line gitFile in gitFiles
+      put empty into item -1 of gitFile
+      put gitFile & CR after gitFolders
+   end repeat
+   delete char -1 of gitFolders
+   return gitFolders
+end git_FindRepos
+
+function git_FindInvisibleGitFolders
+   -- very slow but works
+   -- "Win32", "MacOS", "Linux", "iphone", "android", or "HTML5"
+   switch the platform 
+      case "macos" 
+         -- put spotlight_FindFolders (".git", $HOME, true) into gitFiles -- can't find invisible folders
+         put shell ("find $HOME -type d -name '.git' -print") into gitFiles
+         break
+      case "linux"
+         put shell ("find $HOME -type d -name '.git' -print") into gitFiles
+         break
+      default
+         -- use a Livecode directory crawler
+         return empty
+   end switch
+   return gitFiles
+end git_FindInvisibleGitFolders
+
+command git_CloneAndReplaceFolder gitURL, someFolder
+   set the cursor to watch
+   set the itemdelimiter to slash
+   put item -1 of someFolder into shortFolder
+   
+   if there is a folder someFolder then
+      revDeleteFolder someFolder
+   end if
+   
+   put someFolder into folderAbove
+   delete item -1 of folderAbove
+   folder_CreateNested folderAbove
+   
+   git_Clone gitURL, folderAbove, shortFolder
+end git_CloneAndReplaceFolder
+
 getprop git_RelativeFile [toWhat]
    put the stack_Object of the target into stackObject
    put the effective filename of stackObject into stackFile
@@ -43,7 +88,7 @@ command git_AddFile someFile
    put "git add" into someShell
    put space & someFile after someShell
    
-   put git_ExecuteShellCommand(someShell) into shellResult
+   put git_ExecuteShellCommand (someShell) into shellResult
    return shellResult
 end git_AddFile
 
@@ -52,7 +97,7 @@ command git_AddEverything pCheckoutFolder
    return shellResult
 end git_AddEverything
 
-command git_AddChanged someFile
+command git_AddChanged someFile, pCheckoutFolder
    /*
    -u, --update
    Update only files that git already knows about, staging modified content for commit and marking
@@ -66,7 +111,7 @@ command git_AddChanged someFile
       shell_BashParamEscape someFile
       put space & "--" && someFile after someShell
    end if
-   put git_ExecuteShellCommand(someShell) into shellResult
+   put git_ExecuteShellCommand (someShell, pCheckoutFolder) into shellResult
    return shellResult
 end git_AddChanged
 
@@ -687,35 +732,37 @@ end git_CommitScriptfile
 
 --> GIT | Stack
 -
-command stack_RevertLoaded pStackNames, pLockMessages
-   -- this needs work!!!
-   -- important handler to get robustly right
-   -- could be fine tuned to simply act on the stack
+function git_GetStackData stackObject, commitHash
+   /*
+   This minor modification to git show returns the binary data of the stack
+   */
    
-   if pStackNames is empty then put revLoadedStacks("application") into pStackNames
-   if pLockMessages is not false then set the lockmessages to true
-   put the defaultstack into oDefault
-   repeat for each line stackName in pStackNames
-      -- set the defaultstack to stackName
-      toplevel stack stackName
-      revert
-   end repeat
-   if pLockMessages is not false then set the lockmessages to false
-   library_StopEnvironment
-   library_StartEnvironment
-   set the defaultstack to oDefault
-end stack_RevertLoaded
+   put the git_StackTreeish [commitHash] of stackObject into treeish
+   put "git show" && kwote (treeish) into someShell
+   
+   put git_ExecuteShellCommand (someShell) into shellResult
+   put shellResult into stackData
+   return stackData
+end git_GetStackData
 
 command git_RevertStack someObject, pCommitHash
-   put the stack_Object of someObject into stackObject
-   put the git_RelativeFile of stackObject into relativePath
+   -- you may want to ssave and commit first
+   -- revert to the stack on disk discrding any changes to the loaded (in memory) version.
+   
+   put the stack_Name of someObject into stackName
+   put the git_RelativeFile of stack stackName into relativePath
    
    git_CheckoutRevision relativePath, pCommitHash
    put the result into shellResult
    
-   stack_RevertLoaded someFile
+   -- revert stack stackName 
+   stack_RevertLoaded stackName
+   
    put the result into revertedArray
-   return newName
+   put pCommitHash into revertedArray ["commitHash"]
+   put relativePath into revertedArray ["relativePath"]
+   put stackName into revertedArray ["stackName"]
+   return revertedArray
 end git_RevertStack
 
 command git_DisplayTempStackFromTreeish treeish, pToFile
@@ -785,15 +832,18 @@ command git_DisplayTempStackRevision someObject, commitHash
       set the destroystack of stack toFile to true
       set the destroywindow of stack toFile to true
       set lockmessages to false
+      
+      put the name of stack toFile into newStackObject
+      return newStackObject
    catch e
-      breakpoint
-      -- set the name of stack thisFile to oName
       set the name of stackObject to oName
-      put url ("binfile:" & toFile)
+      
       answer warning merge ("Problem opening versioned [[stackObject]]!")
+      breakpoint
+      put there is a file toFile into fileExists
+      get url ("binfile:" & toFile)
       exit to top
    end try
-   -- finder_Reveal toFile
 end git_DisplayTempStackRevision
 
 command git_ExportFileRevision relativePath, commitHash, pToFile
@@ -1159,37 +1209,6 @@ end git_FetchStatusTable
 
 --> Git | Log
 -
-function git_LogLinkOutline simpleLog
-   repeat for each line someLine in simpleLog
-      put word 1 of someLine into someHash
-      put word 2 to -1 of someLine into firstCommentLine
-      put html_ConstructNameLink (firstCommentLine, someHash) & CR after someOutline
-   end repeat
-   delete char -1 of someOutline
-   return someOutline
-end git_LogLinkOutline
-
-function git_LogLinkArray simpleLog
-   repeat for each line someLine in simpleLog
-      put word 1 of someLine into someHash
-      put word 2 to -1 of someLine into firstCommentLine
-      put someHash into logLinkArray [firstCommentLine]
-   end repeat
-   return logLinkArray
-end git_LogLinkArray
-
-function git_FileLogOutline someFile, pHowMany, pAllBranches
-   put git_FileLog (someFile, pHowMany, pAllBranches) into simpleLog
-   put git_LogLinkOutline (simpleLog) into someOutline
-   return someOutline
-end git_FileLogOutline
-
-function git_FileCommitHashArray someFile, pHowMany, pAllBranches
-   put git_FileLog (someFile, pHowMany, pAllBranches) into simpleLog
-   put git_LogLinkArray(simpleLog) into commitHashArray
-   return commitHashArray
-end git_FileCommitHashArray
-
 function git_HashType someHash
    put "git cat-file -t" into someShell
    put space & someHash after someShell
@@ -1317,6 +1336,30 @@ end git_ExecuteShell
 
 --> GIT | Projects
 -
+command git_Clone gitURL, pNewRepoFolder, pFolderName
+   put defaultfolder into oFolder
+   if pNewRepoFolder is empty then
+      answer folder "Choose Git Folder" with git_GetRootFolder()
+      if the result is "Cancel" then exit to top
+      put it into pNewRepoFolder
+   else
+      folder_CreateNested pNewRepoFolder
+   end if
+   
+   set the defaultfolder to pNewRepoFolder   
+   put "git clone" && gitURL into someShell
+   if pFolderName is not empty then
+      shell_BashParamEscape pFolderName
+      put space && pFolderName after someShell
+   end if
+   put git_ExecuteShellCommand (someShell, pNewRepoFolder) into shellResult
+   if shellResult is not empty then
+      lcw_Notify shellResult, true
+   end if
+   set the defaultfolder to oFolder   
+   return shellResult
+end git_Clone
+
 command git_CloneAndFetch gitURL, pNewRepoFolder
    /*
    Clones a repository into a newly created directory, creates remote-tracking branches for each branch in the cloned repository (visible
@@ -1330,24 +1373,8 @@ command git_CloneAndFetch gitURL, pNewRepoFolder
    remote.origin.url and remote.origin.fetch configuration variables.
    */
    
-   if pNewRepoFolder is empty then
-      answer folder "Choose Git Folder" with git_GetRootFolder()
-      if the result is "Cancel" then exit to top
-      put it into pNewRepoFolder
-   else
-      folder_Create pNewRepoFolder
-   end if
-   set the defaultfolder to pNewRepoFolder
-   
-   put the folders into oFolders
-   
-   put "git clone" && gitURL into someShell
-   put git_ExecuteShellCommand (someShell, pNewRepoFolder) into shellResult
-   if shellResult is not empty then
-      lcw_Notify shellResult, true
-      -- display_Lines shellResult, "GIT clone result"
-      -- exit to top
-   end if
+   git_Clone gitURL, pNewRepoFolder
+   put the result into oFolders
    
    put the folders into nFolders
    put empty into clonedFolder
@@ -1438,39 +1465,7 @@ command repository_Add someFile, fileIsNew, pCommitComment
 end repository_Add
 
 
---> Deps
--
-function stack_GetIsLoaded stackObject
-   if there is a stackObject then
-      return true
-   else
-      return false
-   end if
-   if stackObject is empty then return false
-   
-   put stack_LoadedPaths() into stackNamePaths
-   put word -1 of stackObject into theStackPath
-   replace quote with empty in theStackPath
-   if theStackPath is among the lines of stackNamePaths then
-      return true
-   else
-      return false
-   end if
-end stack_GetIsLoaded
-
-function stack_LoadedPaths
-   put the mainstacks into stackNames
-   repeat for each line stackName in stackNames
-      put the filename of stack stackName into theFilePath
-      if theFilePath is empty then put stackName into theFilePath
-      put theFilePath & CR after stackNamePaths
-   end repeat
-   delete char -1 of stackNamePaths
-   return stackNamePaths
-end stack_LoadedPaths
-
-
---> File
+--> Deps | File
 -
 command file_CreateBinary binaryText, pFile
    /*
@@ -1524,87 +1519,6 @@ function file_IsVersioned someFile
          return false
    end switch
 end file_IsVersioned
-
-function stack_GetIsUsed stackName
-   set the wholematches to true
-   put stackName is among the lines of the stacksinuse into someBoolean
-   return someBoolean
-end stack_GetIsUsed
-
-command stack_GoLocal someObject
-   put the mainstack of the stack_Object of someObject into mainStackName
-   stack_RevertToLocalVersion mainStackName
-end stack_GoLocal
-
-command stack_RevertToLocalVersion mainStackName
-   stack_RemoveFromMemory mainStackName
-   
-   put opn_GetFileName(mainStackName) into someFile
-   go to stack someFile
-   if the result is empty then
-      return stackFile
-   else
-      lcw_Notify (the result & CR & someFile), true
-      return empty
-   end if
-end stack_RevertToLocalVersion
-
-command stack_SaveLoaded pDisplayObject
-   put revLoadedStacks ("application") into stackNames
-   repeat for each line stackName in stackNames
-      set the cursor to busy
-      _DisplayStackSave stackName, pDisplayObject
-      put the result into stackObject
-      if stackObject is empty then next repeat
-      
-      stack_Save stackObject
-   end repeat
-end stack_SaveLoaded
-
-private command _DisplayStackSave stackName, pDisplayObject
-   if exists(stack stackName) is false then
-      lcw_Notify merge("Cannot find stack '[[stackName]]'!"), true
-      return empty
-   else
-      put the name of stack stackName into stackObject
-      if exists (pDisplayObject) then
-         dispatch "display_StackSave stackObject" to pDisplayObject 
-      else
-         lcw_Notify merge("Saved stack '[[stackName]]'!"), false
-      end if
-   end if
-   return stackObject
-end _DisplayStackSave
-
-command stack_CloseLoaded
-   put revLoadedStacks("application") into stackNames
-   repeat for each line stackName in stackNames
-      if exists(stack stackName) is false then
-         -- shouldn't be!
-         breakPoint
-         beep
-         put merge("exists(stack '[[stackName]]') is false") into someError
-         log_Error "stack_CloseLoaded", someError
-         next repeat
-      end if
-      
-      if stackName is "OPN" then
-         save stack stackName
-         stop using stack stackName
-         next repeat
-      end if
-      
-      save stack stackName
-      -- stack_RemoveFromMemory stackName
-      if the owner of stack stackName is empty then
-         delete stack stackname
-      else
-         -- shouldn't be!
-         breakPoint
-         beep
-      end if
-   end repeat
-end stack_CloseLoaded
 
 
 --> Private
