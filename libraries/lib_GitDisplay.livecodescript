@@ -22,12 +22,12 @@ end display_GitStatus
 
 command display_GitFolderStatus gitCheckoutFolder, pArrayView
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
-   display_GitStatusTable gitStatusTable, pArrayView
+   display_GitStatusTable gitStatusTable, gitCheckoutFolder, pArrayView
    put the result into arrayView
    return arrayView
 end display_GitFolderStatus
 
-command display_GitStatusTable gitStatusTable, pArrayView
+command display_GitStatusTable gitStatusTable, gitCheckoutFolder, pArrayView
    set the itemdelimiter to ":"
    if item 1 of gitStatusTable = "fatal" then
       -- fatal: Not a git repository (or any of the parent directories): .git

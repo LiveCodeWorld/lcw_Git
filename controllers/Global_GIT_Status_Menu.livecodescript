@@ -22,22 +22,6 @@ end menu_Init
 
 --> Global | GIT | Status | Menu
 -
-on menu_SelectProject indexView, gitProjectName
-   display_GitStatus gitProjectName
-   
-   put project_GetFolder (gitProjectName) into gitCheckoutFolder
-   
-   put gitProjectName into LocalArray ["gitProjectName"]
-   
-   put the stack_Object of indexView into stackObject
-   set the label of stackObject to gitProjectName
-end menu_SelectProject
-
-on menu_DisplayGitProjectArray
-   put git_GetProjectArray() into gitProjectArray
-   display_Array gitProjectArray
-end menu_DisplayGitProjectArray
-
 on menu_AddAllUntracked arrayView
    set the cursor to watch
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
@@ -48,20 +32,13 @@ on menu_AddAllUntracked arrayView
    put the result into arrayView
 end menu_AddAllUntracked
 
-on menu_StageThenCommit
-   -- put the shiftKey is "Down" into shiftStatus
-   put LocalArray ["gitProjectName"] into gitProjectName
-   -- put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   put git_GetRootFolder() into gitCheckoutFolder
-   
+on menu_StageThenCommit arrayView
+   put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
+   --
    put lcw_Ask ("Comment on this change...") into someComment
    git_CommitChanges someComment, gitCheckoutFolder
-   
-   put the result
-   lcw_Notify "Commited changes..."
-   
-   -- git_RefreshDisplay "Git Status"
-   display_GitStatus gitProjectName
+   --
+   display_GitFolderStatus gitCheckoutFolder, arrayView
 end menu_StageThenCommit
 
 on menu_AddChangesToStage
@@ -170,9 +147,28 @@ on menu_StackHistoryMenu
    set the menu_Title of the card_Tree of me to "Stack | History | Menu"
 end menu_StackHistoryMenu
 
--- on submenu_Development
-return "GIT | Dev | Menu"
-submenu_Development
+on submenu_Dev
+   return "Dev | Menu"
+end submenu_Dev
+
+
+--> Dev | Menu
+-
+on menu_SelectProject indexView, gitProjectName
+   display_GitStatus gitProjectName
+   
+   put project_GetFolder (gitProjectName) into gitCheckoutFolder
+   
+   put gitProjectName into LocalArray ["gitProjectName"]
+   
+   put the stack_Object of indexView into stackObject
+   set the label of stackObject to gitProjectName
+end menu_SelectProject
+
+on menu_DisplayGitProjectArray
+   put git_GetProjectArray() into gitProjectArray
+   display_Array gitProjectArray
+end menu_DisplayGitProjectArray
 
 
 --> Global | GIT | Status | Menu | Props
