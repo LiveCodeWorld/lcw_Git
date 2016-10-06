@@ -92,10 +92,18 @@ command git_AddFile someFile
    return shellResult
 end git_AddFile
 
-command git_AddEverything pCheckoutFolder  
-   put git_ExecuteShellCommand ("git add .", pCheckoutFolder) into shellResult
+command git_AddEverything someFolderInsideProject
+   -- adds every file inside the git project
+   -- you don;t need to pass the root project folder (as you would with "git_AddFolder")
+   put "git add --all" into someShell
+   put git_ExecuteShellCommand (someShell, someFolderInsideProject) into shellResult
    return shellResult
 end git_AddEverything
+
+command git_AddFolder folderToAdd  
+   put git_ExecuteShellCommand ("git add .", folderToAdd) into shellResult
+   return shellResult
+end git_AddFolder
 
 command git_AddChanged someFile, pCheckoutFolder
    /*

@@ -4,14 +4,51 @@
 license: GPLv3
 name: lib_GitDisplay
 type: library
-version: 0.1
+version: 0.2
 
 /*
 A library for working with GIT.
 It has not been tested on unix (should work fine), or Windows machines (beware of line ending issues).
 */
 
+
 --> Working on
+-
+command git_RefreshDisplay pTreeTitle
+   -- this is now handled locally in each display
+   -- look at this to dig out older code for files and log.
+   
+   put the git_TreeField of me into gitTreeField
+   if pTreeTitle is empty then put the title_Text of gitTreeField into pTreeTitle
+   
+   switch pTreeTitle
+      case "Files in Repository"
+         set the cursor to watch
+         put git_ExecuteShellCommand ("git ls-files") into commitedFiles
+         put file_IndexToOutline (commitedFiles, "outline") into someOutline
+         set the tree_Display [pTreeTitle] of gitTreeField to someOutline
+         break
+      case "Log"
+         put "git log --pretty=oneline" into someShell
+         -- put space & "-n30" after someShell
+         put git_ExecuteShellCommand(someShell) into simpleLog
+         put git_LogLinkOutline(simpleLog) into someOutline
+         set the tree_Display ["Log"] of gitTreeField to someOutline
+         break
+      default
+         put git_FetchStatusTable() into gitStatusTable
+         put git_ConstructStatusArray (gitStatusTable) into statusArray
+         
+         put statusArray ["gitStatusTable"] into gitStatusTable
+         put statusArray ["gitTitle"] into gitTitle
+         
+         set the tree_Display [gitTitle] of gitTreeField to gitStatusTable
+   end switch
+   return someOutline
+end git_RefreshDisplay
+
+
+--> Display | GIT | Status
 -
 command display_GitStatus scriptObject, pArrayView
    put the git_CheckoutFolder of scriptObject into gitCheckoutFolder
@@ -34,18 +71,18 @@ command display_GitStatusTable gitStatusTable, gitCheckoutFolder, pArrayView
       answer warning gitStatusTable
       return empty
    end if
-   
    -- put gitShortFolder & comma & "GIT Status" into someTitle
    -- display_Index gitStatusTable, someTitle, "Global | GIT | Status | Menu"
    
    put git_ConstructStatusArray (gitStatusTable) into statusArray
+   array_StripEmptyKeys statusArray
    
    if exists (pArrayView) then
       set the displayed_Array of pArrayView to statusArray
    else
       set the itemdelimiter to slash
       put item -1 of gitCheckoutFolder into gitShortFolder
-      put "GIT Status" & comma & gitShortFolder into someTitle
+      put gitShortFolder && "Status,GIT" into someTitle
       display_Array statusArray, someTitle, "Global | GIT | Status | Menu", "Global | GIT | Line | File | Menu"
       put the result into pArrayView   
       set the displayed_ScriptObject of pArrayView to scriptObject
@@ -213,36 +250,6 @@ end git_TreeField
 
 --> Display
 -
-command git_RefreshDisplay pTreeTitle
-   put the git_TreeField of me into gitTreeField
-   if pTreeTitle is empty then put the title_Text of gitTreeField into pTreeTitle
-   
-   switch pTreeTitle
-      case "Files in Repository"
-         set the cursor to watch
-         put git_ExecuteShellCommand ("git ls-files") into commitedFiles
-         put file_IndexToOutline (commitedFiles, "outline") into someOutline
-         set the tree_Display [pTreeTitle] of gitTreeField to someOutline
-         break
-      case "Log"
-         put "git log --pretty=oneline" into someShell
-         -- put space & "-n30" after someShell
-         put git_ExecuteShellCommand(someShell) into simpleLog
-         put git_LogLinkOutline(simpleLog) into someOutline
-         set the tree_Display ["Log"] of gitTreeField to someOutline
-         break
-      default
-         put git_FetchStatusTable() into gitStatusTable
-         put git_ConstructStatusArray (gitStatusTable) into statusArray
-         
-         put statusArray ["gitStatusTable"] into gitStatusTable
-         put statusArray ["gitTitle"] into gitTitle
-         
-         set the tree_Display [gitTitle] of gitTreeField to gitStatusTable
-   end switch
-   return someOutline
-end git_RefreshDisplay
-
 command display_GitHkeyLog hKey, pDoubleUpThing, pStackLabel
    put hkey_HandlerFile (hKey) into handlerFile
    

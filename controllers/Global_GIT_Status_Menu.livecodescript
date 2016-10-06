@@ -15,41 +15,64 @@ local LocalArray
 -
 on menu_Init tObject
    put the display_View of tObject into displayView
+   put displayView into LocalArray ["displayView"]
    put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
    put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitCheckoutFolder"]
 end menu_Init
 
 
+--> Private
+-
+private command refresh
+   put LocalArray ["displayView"] into displayView
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   display_GitFolderStatus gitCheckoutFolder, displayView
+end refresh
+
+
 --> Global | GIT | Status | Menu
 -
+on menu_Refresh
+   refresh
+end menu_Refresh
+
+on _
+end _
+
 on menu_AddAllUntracked arrayView
    set the cursor to watch
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
-   put "git add --all" into someShell
-   put git_ExecuteShellCommand (someShell, gitCheckoutFolder) into shellResult
-   lcw_Notify shellResult
-   display_GitFolderStatus gitCheckoutFolder, arrayView
-   put the result into arrayView
+   
+   git_AddEverything gitCheckoutFolder
+   put the result into shellResult
+   if shellResult is not empty then
+      lcw_Notify shellResult
+   end if
+   refresh
 end menu_AddAllUntracked
 
 on menu_StageThenCommit arrayView
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
-   --
    put lcw_Ask ("Comment on this change...") into someComment
+   
    git_CommitChanges someComment, gitCheckoutFolder
-   --
-   display_GitFolderStatus gitCheckoutFolder, arrayView
+   
+   refresh
 end menu_StageThenCommit
 
 on menu_AddChangesToStage
+   breakpoint
+   
    git_AddChanged
-   display_GitStatus
+   refresh
 end menu_AddChangesToStage
 
 on _
 end _
 
 on menu_PushCurrentBranch
+   breakpoint
+   
    -- TO push THE new BRANCH TO A REMOTE REPOSITORY
    
    set the cursor to watch

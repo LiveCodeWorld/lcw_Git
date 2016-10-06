@@ -4,22 +4,24 @@
 license: GPLv3
 name: Global_GIT_Stash_Menu
 type: controller
-version: 0.1
+version: 0.2
 
-
---> Menu | Target
--
-local StashNames
-
-getprop menu_CheckTarget
-   put git_ListStashes() into StashNames
-   return true
-end menu_CheckTarget
-
-
---> Global | GIT | Stash | Menu
--
 /*
+This menu provides and interface to git's stash functionailty.
+It is designed to work with display views. Would be an interesting experiment to generalise that.
+
+Use git stash when you want to record the current state of the working directory and the index, but want to go back to a clean working directory. 
+The command saves your local modifications away and reverts the working directory to match the HEAD commit.
+
+The modifications stashed away by this command can be:
+
+*  listed with git stash list
+*  inspected with git stash show, and 
+*  restored (potentially on top of a different commit) with git stash apply. 
+
+Calling git stash without any arguments is equivalent to git stash save. 
+A stash is by default listed as "WIP on branchname …", but you can give a more descriptive message on the command line when you create one.
+
 git stash list [<options>] 
 git stash show [<stash>] 
 git stash drop [-q|--quiet] [<stash>] 
@@ -30,20 +32,66 @@ git stash clear
 git stash create
 */
 
+
+--> Menu | Props
+-
+local LocalArray
+
+on menu_Init tObject
+   put git_ListStashes() into LocalArray ["stashNames"]
+   
+   put the display_View of tObject into displayView
+   put displayView into LocalArray ["displayView"]
+   put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
+   put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitCheckoutFolder"]
+end menu_Init
+
+
+--> Private
+-
+private command _doGit someShell, pDontRefresh
+   breakpoint
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   git_ExecuteShell someShell, gitCheckoutFolder
+   put the result into shellResult
+   if pDontRefresh is not true then
+      refresh
+   end if
+   return shellResult
+end _doGit
+
+private command refresh
+   put LocalArray ["displayView"] into displayView
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   display_GitFolderStatus gitCheckoutFolder, displayView
+end refresh
+
+
+--> Global | GIT | Stash | Menu
+-
+on menu_Refresh
+   refresh
+end menu_Refresh
+
+on _
+end _
+
 on menu_Stash
-   git_ExecuteShell "git stash"
-   git_RefreshDisplay
+   _doGit "git stash"
 end menu_Stash
 
-on menu_PopStash
-   git_ExecuteShell "git stash pop"
-   git_RefreshDisplay
+on menu_PopStash arrayView
+   _doGit "git stash pop", true
+   put the result into poppedGitStatus
+   
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   display_GitStatusTable poppedGitStatus, gitCheckoutFolder, arrayView
 end menu_PopStash
 
 on _
 end _
 
-on menu_ShowStash stashName
+on menu_ListStashContents displayView, stashName
    /*
    show [<stash>]
    
@@ -56,15 +104,15 @@ on menu_ShowStash stashName
    -- put space & "-p " after someShell
    put space & "--numstat " after someShell
    put space & stashName after someShell
-   git_ExecuteShell someShell
-   put the result into gitResult
    
-   put git_ParseShowStash (gitResult) into someOutline
+   _doGit someShell, true
    
-   display_Outline someOutline, stashName, "Global | GIT | Stash | Menu", "Global | GIT | Stash | Line | Menu", 2
-end menu_ShowStash
+   put git_ParseShowStash (the result) into someOutline
+   display_Index someOutline, stashName, "Global | GIT | Stash | Menu", "Global | GIT | Stash | Line | Menu"
+   -- display_Outline someOutline, stashName, "Global | GIT | Stash | Menu", "Global | GIT | Stash | Line | Menu", 2
+end menu_ListStashContents
 
-on menu_DropStash stashName
+on menu_DropStash displayView, stashName
    /*
    drop [-q|--quiet] [<stash>]
    
@@ -73,22 +121,52 @@ on menu_DropStash stashName
    */
    
    put "git stash drop" && stashName into someShell
-   git_ExecuteShell someShell
-   put the result into gitResult
+   _doGit someShell
    
+   put the result into gitResult
    display_Lines gitResult
 end menu_DropStash
 
 on menu_ClearStash
-   git_ExecuteShell "git stash clear"
+   _doGit "git stash clear"
 end menu_ClearStash
 
 on _
 end _
 
-on submenu_Development
+on menu_StashDocs
+   launch url "http://www.kernel.org/pub/software/scm/git/docs/git-stash.html"
+end menu_StashDocs
+
+on submenu_Dev
    return "Dev | Menu"
-end submenu_Development
+end submenu_Dev
+
+
+--> Global | GIT | Stash | Menu | Props
+-
+getprop stash_Names
+   return LocalArray ["stashNames"]
+end stash_Names
+
+
+--> Global | GIT | Stash | Menu | Disabled
+-
+getprop disabled_ClearStash [mTarget]
+   return LocalArray ["stashNames"] is empty
+end disabled_ClearStash
+
+getprop disabled_PopStash [mTarget]
+   return LocalArray ["stashNames"] is empty
+end disabled_PopStash
+
+getprop disabled_ListStashContents [mTarget]
+   return LocalArray ["stashNames"] is empty
+end disabled_ListStashContents
+
+getprop disabled_DropStash [mTarget]
+   return LocalArray ["stashNames"] is empty
+end disabled_DropStash
 
 
 --> Dev | Menu
@@ -103,7 +181,7 @@ on menu_DisplayStashFile treeField
    shell_BashParamEscape relpath
    
    put merge("git show [[stashName]]:[[relpath]]") into someShell
-   git_ExecuteShell someShell
+   _doGit someShell
    put the result into theResult
    
    if someTitle = "Text" then
@@ -136,41 +214,11 @@ on menu_Reflog
    put "git reflog" into someShell
    -- put " --all" after someShell
    
-   git_ExecuteShell someShell
+   _doGit someShell
    put the result into gitResult
    
    display_Lines gitResult
 end menu_Reflog
-
-on menu_StashDocs
-   launch url "http://www.kernel.org/pub/software/scm/git/docs/git-stash.html"
-end menu_StashDocs
-
-
---> Global | GIT | Stash | Menu | Props
--
-getprop stash_Names
-   return StashNames
-end stash_Names
-
-
---> Global | GIT | Stash | Menu | Disabled
--
-getprop disabled_ClearStash [mTarget]
-   return StashNames is empty
-end disabled_ClearStash
-
-getprop disabled_PopStash [mTarget]
-   return StashNames is empty
-end disabled_PopStash
-
-getprop disabled_ShowStash [mTarget]
-   return StashNames is empty
-end disabled_ShowStash
-
-getprop disabled_DropStash [mTarget]
-   return StashNames is empty
-end disabled_DropStash
 
 
 --> Global | GIT | Stash | Menu | Deps
