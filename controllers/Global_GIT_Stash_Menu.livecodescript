@@ -50,7 +50,6 @@ end menu_Init
 --> Private
 -
 private command _doGit someShell, pDontRefresh
-   breakpoint
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
    git_ExecuteShell someShell, gitCheckoutFolder
    put the result into shellResult
@@ -69,13 +68,6 @@ end refresh
 
 --> Global | GIT | Stash | Menu
 -
-on menu_Refresh
-   refresh
-end menu_Refresh
-
-on _
-end _
-
 on menu_Stash
    _doGit "git stash"
 end menu_Stash
@@ -120,6 +112,7 @@ on menu_DropStash displayView, stashName
    When no <stash> is given, it removes the latest one. i.e. stash@{0}, otherwise <stash> must a valid stash log reference of the form stash@{<revision>}.
    */
    
+   breakpoint
    put "git stash drop" && stashName into someShell
    _doGit someShell
    
@@ -128,6 +121,7 @@ on menu_DropStash displayView, stashName
 end menu_DropStash
 
 on menu_ClearStash
+   breakpoint
    _doGit "git stash clear"
 end menu_ClearStash
 
@@ -172,6 +166,7 @@ end disabled_DropStash
 --> Dev | Menu
 -
 on menu_DisplayStashFile treeField
+   breakpoint
    put the title_Text of treeField into stashName
    set the tree_Delimiter of treeField to tab
    set the itemdelimiter to tab
@@ -201,6 +196,7 @@ on menu_DisplayStashFile treeField
 end menu_DisplayStashFile
 
 on menu_ReExportStash
+   breakpoint
    put the stack_Array of stack "libOPN_Menus stash@{0}" into stackArray
    put "libOPN_Menus" into stackName
    put the name of stack stackName into stackArray ["@manifest"]["abbreviated object"]
@@ -211,6 +207,7 @@ on menu_ReExportStash
 end menu_ReExportStash
 
 on menu_Reflog
+   breakpoint
    put "git reflog" into someShell
    -- put " --all" after someShell
    

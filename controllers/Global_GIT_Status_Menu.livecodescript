@@ -36,6 +36,11 @@ on menu_Refresh
    refresh
 end menu_Refresh
 
+on menu_DisplayStatusReport arrayView
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   git_DisplayStatusLines gitCheckoutFolder
+end menu_DisplayStatusReport
+
 on _
 end _
 
@@ -43,6 +48,7 @@ on menu_AddAllUntracked arrayView
    set the cursor to watch
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
    
+   breakpoint
    git_AddEverything gitCheckoutFolder
    put the result into shellResult
    if shellResult is not empty then
@@ -56,7 +62,6 @@ on menu_StageThenCommit arrayView
    put lcw_Ask ("Comment on this change...") into someComment
    
    git_CommitChanges someComment, gitCheckoutFolder
-   
    refresh
 end menu_StageThenCommit
 
@@ -141,15 +146,30 @@ on submenu_Git
    return "Global | GIT | Menu"
 end submenu_Git
 
+-- on submenu_GitFiles
+return "Global | GIT | Files | Menu"
+end submenu_GitFiles
+
 on submenu_GitProjects
-   menu_DoSub "Global | GIT | Folder | Menu"
+   return "Global | GIT | Folder | Menu"
 end submenu_GitProjects
 
 on submenu_GitSettings
    return "Global | GIT | Settings | Menu"
 end submenu_GitSettings
 
-on menu_GitDocumentation menuChoice
+on _
+end _
+
+on submenu_GitScript
+   return "Global | GIT | Script | Menu"
+end submenu_GitScript
+
+on submenu_Gist
+   return "Global | Gist | Menu"
+end submenu_Gist
+
+on menu_GitDocumentation arrayView, menuChoice
    switch menuChoice
       case "Crash course"
          launch url "http://git.or.cz/course/svn.html"
@@ -162,13 +182,6 @@ on menu_GitDocumentation menuChoice
          break
    end switch
 end menu_GitDocumentation
-
-on _
-end _
-
-on menu_StackHistoryMenu
-   set the menu_Title of the card_Tree of me to "Stack | History | Menu"
-end menu_StackHistoryMenu
 
 on submenu_Dev
    return "Dev | Menu"
@@ -206,6 +219,18 @@ getprop git_ProjectNames
    put library_ListProjectNames() into projectNames
    return projectNames
 end git_ProjectNames
+
+
+--> Global | GIT | Status | Menu | Disabled
+-
+-- getprop disabled_AddAllUntracked [arrayView]
+put the hilited_Element of arrayView into pathItems
+if LocalArray ["topKey"] = "Untracked files:" and the number of items of pathItems < 3 then
+   return false
+else
+   return "delete"
+end if
+end disabled_AddAllUntracked
 
 
 --> Menu | Props

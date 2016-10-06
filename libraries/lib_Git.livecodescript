@@ -94,13 +94,16 @@ end git_AddFile
 
 command git_AddEverything someFolderInsideProject
    -- adds every file inside the git project
-   -- you don;t need to pass the root project folder (as you would with "git_AddFolder")
+   -- you don't need to pass the root project folder (as you would with "git_AddFolder")
+   -- does not seem to work with files marked as "Changes not staged for commit:"
+   
    put "git add --all" into someShell
    put git_ExecuteShellCommand (someShell, someFolderInsideProject) into shellResult
    return shellResult
 end git_AddEverything
 
-command git_AddFolder folderToAdd  
+command git_AddFolder folderToAdd
+   -- this will work "cd to folder" then issue "git add ."
    put git_ExecuteShellCommand ("git add .", folderToAdd) into shellResult
    return shellResult
 end git_AddFolder
@@ -113,6 +116,8 @@ command git_AddChanged someFile, pCheckoutFolder
    commit, except that the update is limited to paths specified on the command line. If no paths are
    specified, all tracked files in the current directory and its subdirectories are updated.
    */
+   breakpoint
+   -- not quite sure how / what this id doing
    
    put "git add --update" into someShell
    if someFile is not empty then

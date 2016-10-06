@@ -71,8 +71,6 @@ command display_GitStatusTable gitStatusTable, gitCheckoutFolder, pArrayView
       answer warning gitStatusTable
       return empty
    end if
-   -- put gitShortFolder & comma & "GIT Status" into someTitle
-   -- display_Index gitStatusTable, someTitle, "Global | GIT | Status | Menu"
    
    put git_ConstructStatusArray (gitStatusTable) into statusArray
    array_StripEmptyKeys statusArray
@@ -91,6 +89,18 @@ command display_GitStatusTable gitStatusTable, gitCheckoutFolder, pArrayView
    return pArrayView
 end display_GitStatusTable
 
+command git_DisplayStatusLines gitCheckoutFolder
+   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
+   set the itemdelimiter to slash
+   put item -1 of gitCheckoutFolder into gitShortFolder
+   put gitShortFolder & comma & "GIT Status" into someTitle
+   display_Index gitStatusTable, someTitle, "Global | GIT | Status | Menu"
+   return the result
+end git_DisplayStatusLines
+
+
+--> Display | GIT | Stack
+-
 command display_StackHistory someObject
    local logLinkArray
    

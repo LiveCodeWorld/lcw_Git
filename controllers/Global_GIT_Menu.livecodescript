@@ -25,70 +25,13 @@ on menu_DisplayGitStatus scriptObject
    display_GitStatus scriptObject
 end menu_DisplayGitStatus
 
-on menu_OldGitMenus
-   put revEnvironmentUserPluginsPath() & "/opn_Plugins/opn_Libraries/" into oldLibFolder
-   put oldLibFolder & "libOPN_GIT.rev" into stackPath
-   put the menu_CardNames of stack stackPath into mCards
-   
-   display_Index mCards, "Old GIT Menus,libOPN_GIT", "Global | Menu | Global Cards | Menu", "Global | Menu | Git | Line | Menu", "mDouble_SubStackMenu"
-   put the result into indexView
-   set the displayed_StackPath of indexView to stackPath
-end menu_OldGitmenus
-
-on _
-end _
-
 on menu_ShowStackLog scriptObject
    display_StackHistory scriptObject
 end menu_ShowStackLog
 
-on menu_OtherStackLog scriptObject, someName
-   put the name of stack someName into stackObject
-   display_StackHistory stackObject
-end menu_OtherStackLog
-
 on menu_StackHistory scriptObject
    display_StackHistory scriptObject
 end menu_StackHistory
-
-on menu_OpenRevision scriptObject, backNum
-   put the git_RelativeFile of scriptObject into relativePath
-   put git_GetCommitFileHash (relativePath, backNum) into commitHash
-   if commitHash is empty then
-      answer warning "Cannot find commit hash for this stack!"
-      exit to top
-   end if
-   
-   git_DisplayTempStackRevision scriptObject, commitHash
-end menu_OpenRevision
-
-getprop back_Nums
-   return "1,2,3,4,5,6"
-end back_Nums
-
-on _
-end _
-
-on menu_Gitk mTarget, menuChoice
-   switch menuChoice
-      case "gitk"
-         put "gitk" into someShell
-         break
-      case "all branches"
-         put "gitk --all" into someShell
-         break
-   end switch
-   put git_ExecuteShellCommand(someShell) into shellResult
-   return shellResult
-end menu_Gitk
-
-on menu_ResetHard
-   git_HardReset
-end menu_ResetHard
-
-on menu_SaveAndCompactMemoryStacks
-   stack_SaveLoaded
-end menu_SaveAndCompactMemoryStacks
 
 on _
 end _
@@ -128,45 +71,22 @@ end menu_Search
 on _
 end _
 
-on menu_ThrowAwayUncommittedChanges
-   /*
-   Note: git revert is used to record a new commit to reverse the effect of an earlier commit (often a faulty one). If you want to throw away all uncommitted changes in your working directory, you should see git-
-   reset(1), particularly the --hard option. If you want to extract specific files as they were in another commit, you should see git-checkout(1), specifically the git checkout <commit> -- <filename> syntax. Take care
-   with these alternatives as both will discard uncommitted changes in your working directory.
-   */
-   
-   put "git reset --hard HEAD" into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
-   git_RefreshDisplay true, "Git Status"
-   
-   if shellResult is not empty then
-      opn_Notify shellResult, true
-   end if
-end menu_ThrowAwayUncommittedChanges
-
-on menu_RevertCommit
-   put "git revert --no-edit HEAD" into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
-   git_RefreshDisplay true, "Git Status"
-   
-   if shellResult is not empty then
-      beep
-      opn_Notify shellResult
-   end if
-end menu_RevertCommit
-
-on _
-end _
-
 on submenu_Dev
    return "Dev | Menu"
 end submenu_Dev
 
 
---> Menu | Props
--
 --> Global | GIT | Menu | Props
 -
+getprop back_Nums
+   return "1,2,3,4,5,6"
+end back_Nums
+
+on menu_OtherStackLog scriptObject, someName
+   put the name of stack someName into stackObject
+   display_StackHistory stackObject
+end menu_OtherStackLog
+
 getprop some_Names
    return stack_ListNames()
 end some_Names
@@ -180,95 +100,47 @@ setprop search_Term searchTerm
 end search_Term
 
 
+--> Menu | Props
+-
+
 --> Dev | Menu
 -
+on menu_DisplayOldGitMenus
+   put revEnvironmentUserPluginsPath() & "/opn_Plugins/opn_Libraries/" into oldLibFolder
+   put oldLibFolder & "libOPN_GIT.rev" into stackPath
+   put the menu_CardNames of stack stackPath into mCards
+   
+   display_Index mCards, "Old GIT Menus,libOPN_GIT", "Global | Menu | Global Cards | Menu", "Global | Menu | Git | Line | Menu", "mDouble_SubStackMenu"
+   put the result into indexView
+   set the displayed_StackPath of indexView to stackPath
+end menu_DisplayOldGitMenus
+
+on _
+end _
+
 /*
-was "Global | Git | Line | Stack | Log | Menu"
+Was "Global | Git | Line | Stack | Log | Menu"
 */
 
-on menu_CloneRevertedStack treeField
-   put the tree_SelectedLink of treeField into commitHash
-   put the displayed_Object of treeField into stackObject
-   
-   git_DisplayTempStackRevision stackObject, commitHash
-end menu_CloneRevertedStack
-
 on _
 end _
 
-on menu_DiffStackBinaries treeField
-   put the tree_SelectedLink of treeField into commitHash
-   put the displayed_Object of treeField into stackObject
-   
-   put the filename of stackObject into thisFile
-   put the git_RelativeFile of stackObject into relativePath
-   
-   git_ExportFileRevision relativePath, commitHash
-   put the result into toFile
-   
-   diff_Files thisFile, toFile
-end menu_DiffStackBinaries
-
-on _
-end _
-
-on menu_RevertStack treeField
-   put the tree_SelectedLink of treeField into commitHash
-   put the displayed_Object of treeField into stackObject
-   /*
-   put the git_RelativeFile of mTarget into relativeFile
-   put git_GetLastRevision (relativeFile, 1) into binaryStackData
-   display_Text binaryStackData
-   */
-   
-   -- put the long id of stackObject into stackObject
-   -- delete stackObject
-   git_RevertStack stackObject, commitHash
-   -- go to stackObject
-end menu_RevertStack
-
-on menu_StackData treeField
-   put the tree_SelectedLink of treeField into commitHash
-   put the displayed_Object of treeField into stackObject
-   
-   put the git_StackTreeish [commitHash] of stackObject into treeish
-   put "git show" && kwote (treeish) into someShell
-    
+on menu_Gitk mTarget, menuChoice
+   switch menuChoice
+      case "gitk"
+         put "gitk" into someShell
+         break
+      case "all branches"
+         put "gitk --all" into someShell
+         break
+   end switch
    put git_ExecuteShellCommand(someShell) into shellResult
-   put shellResult into stackData
-   
-   display_Text stackData
-end menu_StackData
+   return shellResult
+end menu_Gitk
 
-on _
-end _
-
-on menu_DisplayCommitInfo treeField
-   put the tree_SelectedLink of treeField into commitHash
-   put git_HashInfo (commitHash) into hashInfo   
-   put "git show" && kwote (commitHash) into someShell
-   display_Text hashInfo, someShell
-end menu_DisplayCommitInfo
-
-on menu_ListCommitInfo treeField
-   put the tree_SelectedLink of treeField into commitHash
-   put the displayed_Object of treeField into stackObject
-   
-   put git_List (commitHash) into logText
-   
-   put "git ls-tree" && commitHash into someShell
-   display_Lines logText, someShell
-end menu_ListCommitInfo
-
-on menu_StackHashLog treeField
-   -- a log of all the previous commits of a version specified by commitHash
-   put the tree_SelectedLink of treeField into commitHash
-   put the displayed_Object of treeField into stackObject
-   
-   put the git_StackHashLog [commitHash] of stackObject into logText
-   
-   display_Lines logText, ("the git_ObjectHashLog [" & commitHash & "] of" && stackObject)
-end menu_StackHashLog
+on menu_SaveAndCompactMemoryStacks
+   stack_SaveLoaded
+end menu_SaveAndCompactMemoryStacks
 
 
 --> Dev | menu | Props
