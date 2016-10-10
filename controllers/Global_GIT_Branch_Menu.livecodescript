@@ -166,14 +166,14 @@ on menu_MergeWithMaster arrayView
    _refreshGitStatus
 end menu_MergeWithMaster
 
-on menu_Abortmerge
+on menu_AbortMerge
    -- Stop merge (in case of conflicts)
    put "git merge --abort" into someShell
    put _executeGit (someShell)  into shellResult
    
    display_Lines shellResult, "git merge master"
    _refreshGitStatus
-end menu_Abortmerge
+end menu_AbortMerge
 
 on _
 end _
@@ -198,19 +198,30 @@ end menu_RemoteBranch
 on _
 end _
 
-on menu_ViewBranches arrayView, menuChoice 
-   switch menuChoice
-      case "Local branches"
-         put "git branch" into someShell
-         break
-      case "Local and remote brances"
-         put "git branch -a" into someShell
-         break
-   end switch
+on menu_DiffLocalBranch arrayView, localBranchName
+   put "git diff" into someShell
+   -- put space & "--git-diff-index" after someShell
+   put space & "--raw" after someShell
    
-   put _executeGit (someShell)  into shellResult
-   display_Index shellResult
-end menu_ViewBranches
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   put git_CurrentBranchName (gitCheckoutFolder) into currentBranchName
+   shell_BashParamEscape currentBranchName
+   shell_BashParamEscape localBranchName
+   put space & currentBranchName & ".." & localBranchName after someShell
+   
+   put _executeGit (someShell)  into rawDiff
+   put git_ParseRawDiff (rawDiff) into dataArray
+   
+   display_Array dataArray, someShell, "Global | Git | Diff | Raw | Menu", "Global | Git | Diff | Raw | Line | Menu"
+   put the result into arrayView
+   set the displayed_CheckoutFolder of arrayView to gitCheckoutFolder
+   set the current_BranchName of arrayView to currentBranchName
+   set the other_BranchName of arrayView to localBranchName
+   
+   -- display_Table dataArray, someShell, true, true, true, "status,srcPath,srcHash,dstHash,srcMode,dstMode,dstPath", "status,srcPath,srcHash,dstHash"
+   -- put the result into tableView
+   -- set the table_BodyTitle of tableView to "Global | Git | Diff | Raw | Menu"
+end menu_DiffLocalBranch
 
 on _
 end _
@@ -248,6 +259,20 @@ end submenu_Dev
 
 --> Dev | menu
 -
+on menu_ViewBranches arrayView, menuChoice 
+   switch menuChoice
+      case "Local branches"
+         put "git branch" into someShell
+         break
+      case "Local and remote brances"
+         put "git branch -a" into someShell
+         break
+   end switch
+   
+   put _executeGit (someShell)  into shellResult
+   display_Index shellResult
+end menu_ViewBranches
+
 -- on menu_DiffLocalBranch localBranchName
 put "git diff" into someShell
 put space & "--numstat" after someShell
@@ -264,29 +289,6 @@ put "+" & tab & "-" & tab & "relative file name" & CR before someTable
 display_Table someTable, someShell, true, true, true
 put the result into tableView
 -- set the menu_Title of 
-end menu_DiffLocalBranch
-
-on menu_DiffLocalBranch arrayView, localBranchName
-   breakpoint
-   put "git diff" into someShell
-   -- put space & "--git-diff-index" after someShell
-   put space & "--raw" after someShell
-   
-   put git_CurrentBranchName() into currentBranchName
-   
-   shell_BashParamEscape currentBranchName
-   shell_BashParamEscape localBranchName
-   put space & currentBranchName & ".." & localBranchName after someShell
-   
-   put git_ExecuteShellCommand (someShell) into rawDiff
-   put git_ParseRawDiff (rawDiff) into dataArray
-   
-   display_Table dataArray, someShell, true, true, true, "status,srcPath,srcHash,dstHash,srcMode,dstMode,dstPath", "status,srcPath,srcHash,dstHash"
-   put the result into tableView
-    
-   -- set the menu_Title of tableView to "Global | Git | Diff | Raw | Menu"
-   set the table_BodyTitle of tableView to "Global | Git | Diff | Raw | Menu"
-   -- set the table_HeaderTitle ["srcPath"] of tableView to "Global | Git | Diff | Raw | Menu"
 end menu_DiffLocalBranch
 
 
@@ -354,6 +356,8 @@ function git_ParseRawDiff rawDiff
       put word 4 of firstBit into dstHash
       put word 5 of firstBit into status
       
+      /*
+      -- for datagrid
       put srcMode into dataArray [lineNum]["srcMode"]
       put dstMode into dataArray [lineNum]["dstMode"]
       put srcHash into dataArray [lineNum]["srcHash"]
@@ -361,6 +365,14 @@ function git_ParseRawDiff rawDiff
       put srcPath into dataArray [lineNum]["srcPath"]
       put dstPath into dataArray [lineNum]["dstPath"]
       put status into dataArray [lineNum]["status"]
+      */
+      
+      put srcMode into dataArray [srcPath]["srcMode"]
+      put dstMode into dataArray [srcPath]["dstMode"]
+      put srcHash into dataArray [srcPath]["srcHash"]
+      put dstHash into dataArray [srcPath]["dstHash"]
+      put dstPath into dataArray [srcPath]["dstPath"]
+      put status into dataArray [srcPath]["status"]
       
       add 1 to lineNum
    end repeat

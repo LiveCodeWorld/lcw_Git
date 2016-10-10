@@ -1022,9 +1022,8 @@ end git_StashArray
 
 --> GIT
 -
-function git_CurrentBranchName
-   -- was "current_BranchName"
-   put git_ExecuteShellCommand("git branch") into shellResult
+function git_CurrentBranchName checkoutFolder
+   put git_ExecuteShellCommand ("git branch", checkoutFolder) into shellResult
    repeat for each line someLine in shellResult
       if word 1 of someLine = "*" then
          return word 2 to -1 of someLine
