@@ -5,7 +5,7 @@ name: lib_Git
 type: library
 copyright: David Bovill
 license: GPLv3
-version: 0.7
+version: 0.8
 
 /*
 A library for working with GIT.
@@ -14,6 +14,180 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 
 --> Working On
 -
+command git_DisplayTempStackRevision someObject, commitHash 
+   put the stack_Object of someObject into stackObject
+   put the effective filename of stackObject into thisFile
+   
+   put the short name of stack thisFile into oName
+   
+   if exists (stack thisFile) is false then
+      answer warning "Stack does not exist!"
+      breakpoint
+      exit to top
+   end if
+   
+   set lockmessages to true
+   git_ExportFileRevision thisFile, commitHash
+   put the result into toFile
+   
+   if exists (stack toFile) is false then
+      answer warning "Revision Stack does not exist!"
+      breakpoint
+      
+      put toFile into toFolder
+      set the itemdelimiter to slash
+      put empty into item -1 of toFolder
+      finder_Reveal toFolder
+      
+      launch_Atom toFile
+      exit to top
+   end if
+   
+   put "tempStackName" && oName into tempStackName
+   put oName && commitHash into exportedRevisionName
+   
+   try
+      set lockmessages to true
+      set the name of stack thisFile to tempStackName -- not totally sure this is needed
+      set the name of stack toFile to exportedRevisionName
+      set the name of stack thisFile to oName -- not totally sure this is needed (maybe just keep it as it was). But tricky to debug.
+      set lockmessages to false
+      
+      set the destroystack of stack toFile to true
+      set the destroywindow of stack toFile to true     
+   catch e
+      set the name of stack thisFile to oName
+      
+      answer warning merge ("Problem opening versioned [[stackObject]]!")
+      breakpoint
+      put there is a file toFile into fileExists
+      get url ("binfile:" & toFile)
+      launch_Atom toFile
+      exit to top
+   end try
+   
+   set the label of stack toFile to exportedRevisionName
+   put the name of stack toFile into newStackObject
+   go to stack toFile
+end git_DisplayTempStackRevision
+
+command git_DisplayTempStackFromTreeish commitHash, pToFile
+   breakpoint
+   git_ExportFileRevision relativePath, commitHash
+   put the result into toFile
+   
+   set lockmessages to true
+   put the name of stack toFile into oName
+   set the name of stack toFile to (oName && treeish)
+   go to stack toFile
+   set lockmessages to false
+   
+   set the destroystack of stack toFile to true
+   set the destroywindow of stack toFile to true
+end git_DisplayTempStackFromTreeish
+
+command git_ExportFileRevision someFile, commitHash, pToFile
+   /*
+   fatal: Path 'libraries/lib_Git.livecodescript' exists, but not 'lib_Git.livecodescript'.
+   Did you mean '53195e09c611ab9ae89d62e996737dbb0e294334:libraries/lib_Git.livecodescript' aka '53195e09c611ab9ae89d62e996737dbb0e294334:./lib_Git.livecodescript'?
+   */
+   
+   set the itemdelimiter to slash
+   put item -1 of someFile into shortFile
+   -- put someFile into someFolder
+   -- put empty into item -1 of someFolder
+   
+   put checkout_FindRoot (someFile) into gitRootFolder
+   file_SetRelativePath someFile, gitRootFolder
+   
+   if pToFile is empty then
+      set the itemdelimiter to "/"
+      put the tempName & "/" into tempFolder
+      folder_CreateNested tempFolder
+      put tempFolder & shortFile into pToFile
+   end if
+   
+   shell_BashParamEscape someFile
+   put "git show" && commitHash & ":" & someFile into someShell
+   put space & ">" && kwote (pToFile) after someShell
+   
+   put git_ExecuteShellCommand (someShell, gitRootFolder) into shellResult 
+   return pToFile
+end git_ExportFileRevision
+
+command git_AddFile someFile
+   set the itemdelimiter to slash
+   put item -1 of someFile into shortFile
+   put someFile into someFolder
+   put empty into item -1 of someFolder
+   
+   put "git add" && kwote (shortFile) into someShell
+   
+   put git_ExecuteShellCommand (someShell, someFolder) into shellResult
+   return shellResult
+end git_AddFile
+
+command git_ExecuteMergedShell shellTemplate, someFile
+   set the itemdelimiter to slash
+   put item -1 of someFile into shortFile
+   put someFile into someFolder
+   put empty into item -1 of someFolder
+   
+   shell_BashParamEscape shortFile
+   put merge (shellTemplate) into someShell
+   
+   breakpoint
+   put git_ExecuteShellCommand (someShell, someFolder) into shellResult
+   return shellResult
+end git_ExecuteMergedShell
+
+function git_FileLog someFile, pCommitHash, pLogFormat, pHowMany, pAllBranches
+   set the itemdelimiter to slash
+   put item -1 of someFile into shortFile
+   put someFile into someFolder
+   put empty into item -1 of someFolder
+   
+   put "git log" into someShell
+   if pAllBranches is not false then put space & "--all" after someShell
+   if pLogFormat is empty then put "oneline" into pLogFormat
+   put space & "--pretty=" & pLogFormat after someShell
+   if pHowMany is not empty then put space & "-n" & pHowMany after someShell
+   if pCommitHash is not empty then put space & pCommitHash after someShell
+   
+   if shortFile is not empty then put space & "--" && kwote (shortFile, "'") after someShell
+   
+   put git_ExecuteShellCommand (someShell, someFolder) into simpleLog
+   return simpleLog
+end git_FileLog
+
+function git_StackHashLog someFile, pCommitHash, pLogFormat, pHowMany, pAllBranches
+   return git_FileLog (someFile, pCommitHash, pLogFormat, pHowMany, pAllBranches)
+   
+   /*
+   -- old code
+   if pLogFormat is empty then put "oneline" into pLogFormat
+   
+   set the itemdelimiter to slash
+   put item -1 of someFile into shortFile
+   put someFile into someFolder
+   put empty into item -1 of someFolder
+   
+   put "git log" into someShell
+   put space & "--pretty=" & pLogFormat after someShell
+   
+   -- if pHowMany is empty then put "1" into pHowMany
+   if pHowMany is not empty then put space &  "-n" & pHowMany after someShell
+   
+   if pCommitHash is not empty then put space & pCommitHash after someShell
+   if shortFile is not empty then
+      put space & "--" && kwote (shortFile) after someShell
+   end if
+   
+   put git_ExecuteShellCommand (someShell, someFolder) into logText
+   return logText
+   */
+end git_StackHashLog
+
 function git_FindRepos
    put git_FindInvisibleGitFolders() into gitFiles
    set the itemdelimiter to slash
@@ -73,6 +247,12 @@ getprop git_RelativeFile [toWhat]
    return stackFile
 end git_RelativeFile
 
+function git_GetRelativeFile someFile
+   put checkout_FindRoot (someFile) into baseFolder
+   file_SetRelativePath someFile, baseFolder
+   return someFile
+end git_GetRelativeFile
+
 
 --> Git | add
 -
@@ -81,16 +261,6 @@ function git_UntrackedFiles
    put someArray ["Untracked files:"] into untrackedFiles
    return untrackedFiles
 end git_UntrackedFiles
-
-command git_AddFile someFile
-   shell_BashParamEscape someFile
-   
-   put "git add" into someShell
-   put space & someFile after someShell
-   
-   put git_ExecuteShellCommand (someShell) into shellResult
-   return shellResult
-end git_AddFile
 
 command git_AddEverything someFolderInsideProject
    -- adds every file inside the git project
@@ -620,6 +790,13 @@ getprop git_ScriptFileLog
    return someLog
 end git_ScriptFileLog
 
+getprop git_FileLog
+   put the stack_Name of the target into stackName
+   put the effective filename of stack stackName into someFile
+   put git_FileLog (someFile) into someLog
+   return someLog
+end git_FileLog
+
 getprop git_BlobHash [commitHash]
    put the git_StackTreeish [commitHash] of the target into stackTreeish
    put git_BlobHashFromTreeish (stackTreeish) into blobHash
@@ -778,20 +955,6 @@ command git_RevertStack someObject, pCommitHash
    return revertedArray
 end git_RevertStack
 
-command git_DisplayTempStackFromTreeish treeish, pToFile
-   git_ExportFileRevision relativePath, treeish
-   put the result into toFile
-   
-   set lockmessages to true
-   put the name of stack toFile into oName
-   set the name of stack toFile to (oName && treeish)
-   go to stack toFile
-   set lockmessages to false
-   
-   set the destroystack of stack toFile to true
-   set the destroywindow of stack toFile to true
-end git_DisplayTempStackFromTreeish
-
 command git_RestoreFile relativePath
    /*
    $ git checkout HEAD^ path/to/file
@@ -823,57 +986,6 @@ function git_ConstructCheckoutCommand relativePath, commitHash
    put "git checkout" && commitHash && "--" && relativePath into someShell
    return someShell
 end git_ConstructCheckoutCommand
-
-command git_DisplayTempStackRevision someObject, commitHash 
-   put the stack_Object of someObject into stackObject
-   put the filename of stackObject into thisFile
-   
-   put thisFile into relativePath
-   git_SetRelativePath relativePath
-   put the short name of stack stackObject into oName
-   
-   set lockmessages to true
-   git_ExportFileRevision relativePath, commitHash
-   put the result into toFile
-   
-   try
-      set the name of stack thisFile to ("tempStackName" && oName)
-      set the name of stack toFile to (oName && commitHash)
-      go to stack toFile
-      set the name of stack thisFile to oName
-      
-      set the destroystack of stack toFile to true
-      set the destroywindow of stack toFile to true
-      set lockmessages to false
-      
-      put the name of stack toFile into newStackObject
-      return newStackObject
-   catch e
-      set the name of stackObject to oName
-      
-      answer warning merge ("Problem opening versioned [[stackObject]]!")
-      breakpoint
-      put there is a file toFile into fileExists
-      get url ("binfile:" & toFile)
-      exit to top
-   end try
-end git_DisplayTempStackRevision
-
-command git_ExportFileRevision relativePath, commitHash, pToFile
-   if pToFile is empty then
-      set the itemdelimiter to "/"
-      put the tempName & "/" into someFolder
-      folder_CreateNested someFolder
-      put someFolder & item -1 of relativePath into pToFile
-   end if
-   
-   put kwote(relativePath) into relativePath
-   put merge("git show [[commitHash]]:[[relativePath]]") into someShell
-   put space & ">" && kwote(pToFile) after someShell
-   
-   put git_ExecuteShellCommand(someShell) into shellResult 
-   return pToFile
-end git_ExportFileRevision
 
 
 --> GIT | Stash
@@ -1229,37 +1341,6 @@ function git_HashType someHash
    put git_ExecuteShellCommand (someShell) into hashType
    return hashType
 end git_HashType
-
-function git_StackHashLog pRelativeFile, pCommitHash, pLogFormat, pHowMany
-   if pLogFormat is empty then put "oneline" into pLogFormat
-   
-   put "git log" into someShell
-   put space & "--pretty=" & pLogFormat after someShell
-   
-   -- if pHowMany is empty then put "1" into pHowMany
-   if pHowMany is not empty then put space &  "-n" & pHowMany after someShell
-   
-   if pCommitHash is not empty then put space & pCommitHash after someShell
-   if pRelativeFile is not empty then
-      shell_BashParamEscape pRelativeFile
-      put space & "--" && pRelativeFile after someShell
-   end if
-   
-   put git_ExecuteShellCommand (someShell) into logText
-   return logText
-end git_StackHashLog
-
-function git_FileLog someFile, pHowMany, pAllBranches, pLogFormat
-   put "git log" into someShell
-   if pAllBranches is not false then put space & "--all" after someShell
-   if pLogFormat is empty then put "oneline" into pLogFormat
-   if pLogFormat is not empty then put space & "--pretty=" & pLogFormat after someShell
-   if pHowMany is not empty then put space & "-n" & pHowMany after someShell
-   if someFile is not empty then put space & "--" && kwote(someFile, "'") after someShell
-   
-   put git_ExecuteShellCommand (someShell) into simpleLog
-   return simpleLog
-end git_FileLog
 
 function git_GetRevisionHistory gitHash, pObject, pShowDiff
    put "git log --stat -n1" into someShell

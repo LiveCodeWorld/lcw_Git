@@ -6,45 +6,268 @@ name: Global_GIT_Branch_Menu
 type: controller
 version: 0.1
 
+--> Variables
+-
+local LocalArray
+
+
+--> Menu | Props
+-
+on menu_Init tObject
+   get the hilited_Element of tObject
+   put item 1 of it into LocalArray ["topKey"]
+   
+   put the display_View of tObject into displayView
+   put displayView into LocalArray ["displayView"]
+   put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
+   put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitCheckoutFolder"]
+   put the displayed_Array of displayView into LocalArray ["displayedArray"]
+end menu_Init
+
+getprop menu_Target [mTiltlePath]
+   pass menu_Target
+end menu_Target
+
+
+--> Private
+-
+private command _refreshGitStatus
+   put LocalArray ["displayView"] into displayView
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   display_GitFolderStatus gitCheckoutFolder, displayView
+end _refreshGitStatus
+
+private function _getFile arrayView
+   put the selected_Value of arrayView into relativeFile
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   put gitCheckoutFolder & relativeFile into someFile
+   return someFile
+end _getFile
+
+private function _executeGit someShell
+   put _getCheckoutFolder() into gitCheckoutFolder
+   put git_ExecuteShellCommand (someShell, gitCheckoutFolder) into shellResult
+   return shellResult
+end _executeGit
+
+private function _getCheckoutFolder
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   
+   -- could check here that the folder is versioned by git
+   if there is not a folder gitCheckoutFolder then
+      answer warning "Cannot locate git folder for this action!"
+      breakpoint
+      exit to top
+   end if
+   return gitCheckoutFolder
+end _getCheckoutFolder
+
+private function _askForBranchName
+   put lcw_Ask ("What's the new branch name?", "test") into branchName
+   if git_ValidBranchName (branchName) is false then
+      answer warning "Branch name contains invalid characters!"
+      exit to top
+   end if
+   if the number of words of branchName > 1 then put kwote (branchName) into branchName
+   return branchName
+end _askForBranchName
+
+function git_ValidBranchName branchName
+   -- http://stackoverflow.com/questions/3651860/which-characters-are-illegal-within-a-branch-name
+   switch
+      case branchName begins with "."
+      case branchName contains ".."
+      case branchName ends with "/"
+      case branchName ends with ".lock"
+      case branchName contains "\"
+         return false
+      default
+         return true
+   end switch
+end git_ValidBranchName
+
 
 --> Global | GIT | Branch | Menu
 -
-on menu_CreateNewBranch
-   put opn_Ask("What's the new branch name?", "test") into branchName
-   put "git branch" && branchName into someShell
-   opn_Notify someShell, true
-   put git_ExecuteShellCommand(someShell) into shellResult
-   display_Text shellResult
-end menu_CreateNewBranch
-
-on menu_SwitchLocalBranch localBranchName
-   -- TO switch TO ANOTHER BRANCH
-   -- The state of your file system will change after executing this command.
+on menu_SwitchLocalBranch arrayView, localBranchName
+   /*
+   To prepare for working on <branch>, switch to it by updating the index and the files in the working tree, and by pointing HEAD at the branch. 
+   Local modifications to the files in the working tree are kept, so that they can be committed to the <branch>.
+   
+   Switching branches carries uncommitted changes with you. 
+   If you don't want to do that, either commit first, run git checkout . to undo them, or run git stash before switching. (You can get your changes back with git stash apply)
+   -- http://stackoverflow.com/questions/5531362/why-git-keeps-showing-my-changes-when-i-switch-branches-modified-added-deleted
+   */
+   
+   put merge ("Sure you want to switch to branch '[[localBranchName]]'?") into someComment
+   lcw_Answer someComment
+   
+   put stack_ListEditedNames() into editedStacks
+   if editedStacks is not empty then
+      answer "The state of your file system will change after executing this command. Do you want to save any stacks you have edited first?" with "Save" and "No"
+      if it is "Save" then
+         stack_SaveEdited "all"
+      end if
+   end if
    
    put "git checkout" && kwote(localBranchName) into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
-   opn_notify shellResult, true
+   put _executeGit (someShell)  into shellResult
+   
+   lcw_Notify shellResult, true
+   _refreshGitStatus
+   
+   put merge ("Be aware that any open stacks may have changed on your file system due to switching branches. You should revert all open staks to ensure you are working with the new files.") into someComment
+   answer someComment
+   
+   -- here we could script reverting ll local files
 end menu_SwitchLocalBranch
 
+on _
+end _
+
+on menu_CreateNewBranch
+   put _askForBranchName() into branchName
+   breakpoint
+   
+   put "git branch" && branchName into someShell
+   put _executeGit (someShell)  into shellResult
+   
+   lcw_Notify shellResult, true
+end menu_CreateNewBranch
+
+on menu_CreateAndCheckoutNewBranch
+   /*
+   -- https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging
+   $ git checkout -b iss53
+   Switched to a new branch "iss53"
+   This is shorthand for:
+   
+   $ git branch iss53
+   $ git checkout iss5
+   */
+   
+   put _askForBranchName() into branchName
+   breakpoint
+   
+   put "checkout -b" && branchName into someShell
+   put _executeGit (someShell)  into shellResult
+   
+   lcw_Notify shellResult, true
+end menu_CreateAndCheckoutNewBranch
+
+on _
+end _
+
+on menu_MergeWithMaster arrayView
+   put "git merge master" into someShell
+   put _executeGit (someShell)  into shellResult
+   
+   display_Lines shellResult, "git merge master"
+   _refreshGitStatus
+end menu_MergeWithMaster
+
+on menu_Abortmerge
+   -- Stop merge (in case of conflicts)
+   put "git merge --abort" into someShell
+   put _executeGit (someShell)  into shellResult
+   
+   display_Lines shellResult, "git merge master"
+   _refreshGitStatus
+end menu_Abortmerge
+
+on _
+end _
+
+on menu_DeleteLocalBranch arrayView, localBranchName
+   breakpoint
+   put "git branch -d" && kwote(localBranchName) into someShell
+   put _executeGit (someShell)  into shellResult
+   lcw_Notify shellResult, true
+end menu_DeleteLocalBranch
+
+on _
+end _
+
+on menu_RemoteBranch arrayView, remoteBranchName
+   breakpoint
+   put "git remote show" && remoteBranchName into someShell
+   put _executeGit (someShell)  into shellResult
+   display_Lines shellResult, someShell
+end menu_RemoteBranch
+
+on _
+end _
+
+on menu_ViewBranches arrayView, menuChoice 
+   switch menuChoice
+      case "Local branches"
+         put "git branch" into someShell
+         break
+      case "Local and remote brances"
+         put "git branch -a" into someShell
+         break
+   end switch
+   
+   put _executeGit (someShell)  into shellResult
+   display_Index shellResult
+end menu_ViewBranches
+
+on _
+end _
+
+on menu_BranchDocumentation arrayView, whichDoc
+   switch whichDoc
+      case "Branching in a nutshell"
+         put "https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell" into someURL
+         break
+      case "Move to new branch"
+         put "http://stackoverflow.com/questions/1394797/move-existing-uncommited-work-to-a-new-branch-in-git" into someURL
+         break
+         cae "-"
+      case "Resolving conflicts"
+         put "https://help.github.com/articles/resolving-a-merge-conflict-from-the-command-line/" into someURL
+         break
+      case "Simple conflict resolution"
+         put "https://githowto.com/resolving_conflicts" into someURL
+         break
+      case "Visual merge tools"
+         put "http://stackoverflow.com/questions/137102/whats-the-best-visual-merge-tool-for-git" into someURL
+         break
+      case "Cheat sheet"
+         put "https://gist.github.com/hofmannsven/6814451" into someURL
+         break
+   end switch
+   
+   launch url someURL
+end menu_BranchDocumentation
+
+on submenu_Dev
+   return "Dev | menu"
+end submenu_Dev
+
+
+--> Dev | menu
+-
 -- on menu_DiffLocalBranch localBranchName
-   put "git diff" into someShell
-   put space & "--numstat" after someShell
-   -- put space & "--name-status" after someShell
-   
-   put git_CurrentBranchName() into currentBranchName
-   
-   shell_BashParamEscape currentBranchName
-   shell_BashParamEscape localBranchName
-   put space & currentBranchName & ".." & localBranchName after someShell
-   
-   put git_ExecuteShellCommand(someShell) into someTable
-   put "+" & tab & "-" & tab & "relative file name" & CR before someTable
-   display_Table someTable, someShell, true, true, true
-   put the result into tableView
-   -- set the menu_Title of 
+put "git diff" into someShell
+put space & "--numstat" after someShell
+-- put space & "--name-status" after someShell
+
+put git_CurrentBranchName() into currentBranchName
+
+shell_BashParamEscape currentBranchName
+shell_BashParamEscape localBranchName
+put space & currentBranchName & ".." & localBranchName after someShell
+
+put git_ExecuteShellCommand(someShell) into someTable
+put "+" & tab & "-" & tab & "relative file name" & CR before someTable
+display_Table someTable, someShell, true, true, true
+put the result into tableView
+-- set the menu_Title of 
 end menu_DiffLocalBranch
 
-on menu_DiffLocalBranch localBranchName
+on menu_DiffLocalBranch arrayView, localBranchName
+   breakpoint
    put "git diff" into someShell
    -- put space & "--git-diff-index" after someShell
    put space & "--raw" after someShell
@@ -55,7 +278,7 @@ on menu_DiffLocalBranch localBranchName
    shell_BashParamEscape localBranchName
    put space & currentBranchName & ".." & localBranchName after someShell
    
-   put git_ExecuteShellCommand(someShell) into rawDiff
+   put git_ExecuteShellCommand (someShell) into rawDiff
    put git_ParseRawDiff (rawDiff) into dataArray
    
    display_Table dataArray, someShell, true, true, true, "status,srcPath,srcHash,dstHash,srcMode,dstMode,dstPath", "status,srcPath,srcHash,dstHash"
@@ -66,58 +289,16 @@ on menu_DiffLocalBranch localBranchName
    -- set the table_HeaderTitle ["srcPath"] of tableView to "Global | Git | Diff | Raw | Menu"
 end menu_DiffLocalBranch
 
-on menu_MergeLocalBranch localBranchName
-   put "git merge" && kwote(localBranchName) into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
-   opn_notify shellResult, true
-end menu_MergeLocalBranch
-
-on menu_DeleteLocalBranch localBranchName
-   put "git branch -d" && kwote(localBranchName) into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
-   opn_notify shellResult, true
-end menu_DeleteLocalBranch
-
-on _
-end _
-
-on menu_RemoteBranch remoteBranchName
-   put "git remote show" && remoteBranchName into someShell
-   
-   -- opn_Notify someShell, true
-   put git_ExecuteShellCommand(someShell) into shellResult
-   display_Lines shellResult, someShell
-end menu_RemoteBranch
-
-on _
-end _
-
-on menu_ViewBranches menuChoice
-   switch menuChoice
-      case "Local branches"
-         put "git branch" into someShell
-         break
-      case "Local and remote brances"
-         put "git branch -a" into someShell
-         break
-   end switch
-   
-   opn_Notify someShell, true
-   put git_ExecuteShellCommand(someShell) into shellResult
-   display_Lines shellResult
-end menu_ViewBranches
-
 
 --> Global | GIT | Branch | Menu | Props
 -
-getprop local_BranchNames
+getprop local_BranchNames [arrayView]   
    put "git branch" into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
+   put _executeGit (someShell)  into shellResult
    
    repeat for each line someLine in shellResult
       if word 1 of someLine = "*" then
          put "(" & word 2 to -1 of someLine & CR after branchNames
-         -- put word 2 to -1 of someLine & CR after branchNames
       else
          put word 1 to -1 of someLine & CR after branchNames
       end if
@@ -133,9 +314,9 @@ getprop remote_BranchNames
 end remote_BranchNames
 
 getprop branch_Names
-   put "git branch" into someShell
+   -- put "git branch" into someShell
    put "git branch -a" into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
+   put _executeGit (someShell)  into shellResult
    
    repeat for each line someLine in shellResult
       if word 1 of someLine = "*" then
@@ -158,7 +339,7 @@ function git_ParseRawDiff rawDiff
       if char 1 of someLine = ":" then
          delete char 1 of someLine
       else
-         opn_Notify someLine, true
+         lcw_Notify someLine, true
          next repeat
       end if
       

@@ -23,18 +23,22 @@ end menu_Init
 
 --> Private
 -
-private command refresh
+private command refreshGitStatus
    put LocalArray ["displayView"] into displayView
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
    display_GitFolderStatus gitCheckoutFolder, displayView
-end refresh
+end refreshGitStatus
 
 
 --> Global | GIT | Status | Menu
 -
-on menu_Refresh
-   refresh
-end menu_Refresh
+on submenu_Branch
+   return "Global | GIT | Branch | Menu"
+end submenu_Branch
+
+on menu_refreshGitStatus
+   refreshGitStatus
+end menu_refreshGitStatus
 
 on menu_DisplayStatusReport arrayView
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
@@ -48,13 +52,12 @@ on menu_AddAllUntracked arrayView
    set the cursor to watch
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
    
-   breakpoint
    git_AddEverything gitCheckoutFolder
    put the result into shellResult
    if shellResult is not empty then
       lcw_Notify shellResult
    end if
-   refresh
+   refreshGitStatus
 end menu_AddAllUntracked
 
 on menu_StageThenCommit arrayView
@@ -62,14 +65,15 @@ on menu_StageThenCommit arrayView
    put lcw_Ask ("Comment on this change...") into someComment
    
    git_CommitChanges someComment, gitCheckoutFolder
-   refresh
+   refreshGitStatus
 end menu_StageThenCommit
 
 on menu_AddChangesToStage
+   -- dig into this. "git add --update" does not seem to do anything useful.
    breakpoint
    
    git_AddChanged
-   refresh
+   refreshGitStatus
 end menu_AddChangesToStage
 
 on _
@@ -190,21 +194,34 @@ end submenu_Dev
 
 --> Dev | Menu
 -
-on menu_SelectProject indexView, gitProjectName
+on menu_SelectProject displayView, gitProjectName
+   breakpoint
    display_GitStatus gitProjectName
    
    put project_GetFolder (gitProjectName) into gitCheckoutFolder
    
    put gitProjectName into LocalArray ["gitProjectName"]
    
-   put the stack_Object of indexView into stackObject
-   set the label of stackObject to gitProjectName
+   put the stack_Object of displayView into stackObject
+   set the label of displayView to gitProjectName
 end menu_SelectProject
 
 on menu_DisplayGitProjectArray
    put git_GetProjectArray() into gitProjectArray
    display_Array gitProjectArray
 end menu_DisplayGitProjectArray
+
+on _
+end _
+
+on menu_ArrayViewScript displayView
+   edit the script of displayView
+end menu_ArrayViewScript
+
+on menu_ArrayViewBehavior displayView
+   put the behavior of displayView into bObject
+   edit the script of bObject
+end menu_ArrayViewBehavior
 
 
 --> Global | GIT | Status | Menu | Props

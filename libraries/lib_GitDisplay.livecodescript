@@ -14,6 +14,62 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 
 --> Working on
 -
+getprop git_StatusMenuTitle
+   -- utility for customising git array display
+   -- not needed to be in a library
+   -- but useful to study how to make flexible menus
+   
+   put "Global | GIT |" into mTitle
+   put the hilited_Element of the target into commaPath
+   put the selected_Value of the target into sValue
+   if sValue is no an array then
+      -- delete item -1 of commaPath
+      put "File" into item -1 of commaPath
+   end if
+   repeat for each item someItem in commaPath
+      put toupper (char 1 of someItem) into char 1 of someItem
+      if char -1 of someItem = ":" then delete char -1 of someItem
+      put space & someItem && "|" after mTitle
+   end repeat
+   put space & "Menu" after mTitle
+   
+   switch
+      case menu_Exists (mTitle)
+         return mTitle
+      default
+         put mTitle
+         put the line_Menu of the target into mTitle
+         return mTitle
+   end switch
+end git_StatusMenuTitle
+
+function menu_Exists mTitle
+   put menu_GetGlobalController (mTitle) into mController
+   return exists (mController)
+end menu_Exists
+
+on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
+   put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
+   text_AddTrailing gitCheckoutFolder, slash
+   put gitCheckoutFolder & shortFileOrFolder into fileOrFolder
+   
+   switch
+      case there is a stack fileOrFolder
+         if the scriptonly of stack fileOrFolder is true then
+            edit the script of stack fileOrFolder
+         else
+            go to stack fileOrFolder
+         end if
+         break
+      case there is a folder fileOrFolder
+         finder_Reveal fileOrFolder
+         break
+      case there is a file fileOrFolder
+         launch_Atom fileOrFolder
+         break
+   end switch
+end mDoubleUp_DisplayGitFile
+
 command git_RefreshDisplay pTreeTitle
    -- this is now handled locally in each display
    -- look at this to dig out older code for files and log.
@@ -57,7 +113,22 @@ command display_GitStatus scriptObject, pArrayView
    return arrayView
 end display_GitStatus
 
+command display_GitProjectStatus projectName, pArrayView
+   put project_GetFolder (projectName) into projectFolder
+   if there is not a folder projectFolder then
+      if projectFolder is not empty then put projectFolder
+      answer warning merge ("Cannot locate a folder for project '[[projectName]]'!")
+      breakpoint
+      exit to top
+   end if
+   
+   display_GitFolderStatus projectFolder, pArrayView
+   put the result into displayView
+   return displayView
+end display_GitProjectStatus
+
 command display_GitFolderStatus gitCheckoutFolder, pArrayView
+   if there is not a folder gitCheckoutFolder then return empty
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
    display_GitStatusTable gitStatusTable, gitCheckoutFolder, pArrayView
    put the result into arrayView
@@ -80,14 +151,33 @@ command display_GitStatusTable gitStatusTable, gitCheckoutFolder, pArrayView
    else
       set the itemdelimiter to slash
       put item -1 of gitCheckoutFolder into gitShortFolder
-      put gitShortFolder && "Status,GIT" into someTitle
-      display_Array statusArray, someTitle, "Global | GIT | Status | Menu", "Global | GIT | Line | File | Menu"
+      put gitShortFolder && ",GIT Status" into someTitle
+      
+      put "mDoubleUp_DisplayGitFile" into mDoubleUpCommand
+      
+      display_Array statusArray, someTitle, "Global | GIT | Status | Menu", "Global | GIT | Line | File | Menu", empty, mDoubleUpCommand
       put the result into pArrayView   
       set the displayed_ScriptObject of pArrayView to scriptObject
       set the displayed_GitCheckoutFolder of pArrayView to gitCheckoutFolder
+      
+      put the script of pArrayView into oScript
+      put git_ConstructDisplayStatusScript() into someScript
+      put oScript & CR & CR & someScript into newScript
+      set the script of pArrayView to newScript
    end if
    return pArrayView
 end display_GitStatusTable
+
+function git_ConstructDisplayStatusScript
+   put "getprop menu_Title" into someScript
+   put CR & "    if the kind of the target = 'com.livecode.widget.treeView' then return the git_StatusMenuTitle of the target" after someScript
+   put CR & "    pass menu_Title" after someScript
+   put CR & "end menu_Title" after someScript
+   
+   -- for some reason  = 'com.livecode.widget.treeView'  does nto work
+   replace "'" with quote in someScript
+   return someScript
+end git_ConstructDisplayStatusScript
 
 command git_DisplayStatusLines gitCheckoutFolder
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable

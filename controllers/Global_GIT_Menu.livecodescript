@@ -162,13 +162,3 @@ end back_Hashs
 getprop back_Nums
    return "0,-,1,2,3,4,5,6,7,8,9"
 end back_Nums
-
-
---> Sketches
--
-command display_GitFile relativePath, commitHash
-   git_ExportFileRevision relativePath, commitHash
-   put the result into tempFile
-   -- edit_TextFile tempFile
-   launch document tempFile
-end display_GitFile
