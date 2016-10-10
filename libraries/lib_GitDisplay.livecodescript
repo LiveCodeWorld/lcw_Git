@@ -106,8 +106,10 @@ end git_RefreshDisplay
 
 --> Display | GIT | Status
 -
-command display_GitStatus scriptObject, pArrayView
-   put the git_CheckoutFolder of scriptObject into gitCheckoutFolder
+command display_GitStatus pScriptObject, pArrayView
+   if pScriptObject is empty then put the long id of the target into pScriptObject
+   put the git_CheckoutFolder of pScriptObject into gitCheckoutFolder
+   
    display_GitFolderStatus gitCheckoutFolder, pArrayView
    put the result into arrayView
    return arrayView
@@ -223,8 +225,8 @@ command display_StackHistory someObject
 end display_StackHistory
 
 function git_ConstructStatusArray gitStatusTable , pNoComments
-   put line -1 of gitStatusTable into gitHint
-   delete line -1 of gitStatusTable
+   -- put line -1 of gitStatusTable into gitHint
+   -- delete line -1 of gitStatusTable
    
    filter gitStatusTable without "#   *"
    filter gitStatusTable without "#"
