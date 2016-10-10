@@ -5,7 +5,7 @@ name: lib_Git
 type: library
 copyright: David Bovill
 license: GPLv3
-version: 0.8
+version: 0.81
 
 /*
 A library for working with GIT.
@@ -20,7 +20,8 @@ on saveStackRequest
       if word 1 to 2 of stackName = "Display Array" and the label of stack stackName = "Git Status" then
          put the long id of group 1 of cd 1 of stack stackName into displayView
          put the displayed_GitCheckoutFolder of displayView into gitCheckoutFolder
-         display_GitFolderStatus gitCheckoutFolder, displayView
+         
+         send "display_GitFolderStatus gitCheckoutFolder,displayView" to displayView in 0 seconds -- so we save first 
       end if
    end repeat
    pass saveStackRequest

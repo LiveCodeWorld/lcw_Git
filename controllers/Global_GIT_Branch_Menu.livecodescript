@@ -117,10 +117,17 @@ on menu_SwitchLocalBranch arrayView, localBranchName
    display_Lines checkoutResult, someShell
    _refreshGitStatus
    
-   put merge ("Be aware that any open stacks may have changed on your file system due to switching branches. You should revert all open staks to ensure you are working with the new files.") into someComment
-   answer someComment
-   
-   -- here we could script reverting ll local files
+   set the itemdelimiter to ":"
+   if word 1 of checkoutResult = "error" then
+      put merge ("Failed to change branch. See error...") into someComment
+      put checkoutResult
+      answer warning someComment
+   else
+      put merge ("Be aware that any open stacks may have changed on your file system due to switching branches. You should revert all open staks to ensure you are working with the new files.") into someComment
+      answer someComment
+      
+      -- here we could script reverting ll local files
+   end if
 end menu_SwitchLocalBranch
 
 on _
