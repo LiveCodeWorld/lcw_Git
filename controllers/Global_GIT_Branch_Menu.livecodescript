@@ -111,9 +111,10 @@ on menu_SwitchLocalBranch arrayView, localBranchName
    end if
    
    put "git checkout" && kwote(localBranchName) into someShell
-   put _executeGit (someShell)  into shellResult
+   put _executeGit (someShell)  into checkoutResult
    
-   lcw_Notify shellResult, true
+   -- lcw_Notify checkoutResult
+   display_Lines checkoutResult, someShell
    _refreshGitStatus
    
    put merge ("Be aware that any open stacks may have changed on your file system due to switching branches. You should revert all open staks to ensure you are working with the new files.") into someComment
