@@ -12,6 +12,21 @@ A library for working with GIT.
 It has not been tested on unix (should work fine), or Windows machines (beware of line ending issues).
 */
 
+
+--> Events
+-
+on saveStackRequest
+   repeat for each line stackName in the openStacks
+      if word 1 to 2 of stackName = "Display Array" and the label of stack stackName = "Git Status" then
+         put the long id of group 1 of cd 1 of stack stackName into displayView
+         put the displayed_GitCheckoutFolder of displayView into gitCheckoutFolder
+         display_GitFolderStatus gitCheckoutFolder, displayView
+      end if
+   end repeat
+   pass saveStackRequest
+end saveStackRequest
+
+
 --> Working On
 -
 command git_DisplayTempStackRevision someObject, commitHash 
@@ -168,11 +183,11 @@ command git_CommitFile someFile, someComment, pVerbose
    return shellResult
 end git_CommitFile
 
-command git_CommitChanges someComment, pGitCheckoutFolder, pAddIfNew, pViewDiff
+command git_CommitChanges someComment, pGitCheckoutFolder, pAddAll, pViewDiff
    repository_SetCommitComment someComment
    
    put "git commit" into someShell
-   if pAddIfNew is not false then put space & "-a" after someShell
+   if pAddAll is not false then put space & "-a" after someShell
    if pViewDiff is not false then put space & "-v" after someShell
    put space & "-m '" & someComment & "'" after someShell
    
