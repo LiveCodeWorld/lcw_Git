@@ -37,6 +37,7 @@ on submenu_Branch
 end submenu_Branch
 
 on menu_refreshGitStatus
+   stack_SaveEdited "all"
    refreshGitStatus
 end menu_refreshGitStatus
 
