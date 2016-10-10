@@ -144,7 +144,7 @@ return shellResult
 end git_AddFile
 
 command git_AddFile someFile
-   put "git add -v -- [[shortFile]]" into shellTemplate
+   put "git add -- [[shortFile]]" into shellTemplate
    git_ExecuteMergedShell shellTemplate, someFile
    return the result
 end git_AddFile
