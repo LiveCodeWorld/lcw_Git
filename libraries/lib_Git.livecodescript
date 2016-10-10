@@ -128,6 +128,9 @@ command git_AddFile someFile
 end git_AddFile
 
 command git_ExecuteMergedShell shellTemplate, someFile
+   replace "{" with "[[" in shellTemplate
+   replace "}" with "]]" in shellTemplate
+   
    set the itemdelimiter to slash
    put item -1 of someFile into shortFile
    put someFile into someFolder
@@ -136,11 +139,44 @@ command git_ExecuteMergedShell shellTemplate, someFile
    shell_BashParamEscape shortFile
    put merge (shellTemplate) into someShell
    
-   breakpoint
-   put git_ExecuteShellCommand (someShell, someFolder) into shellResult
+  put git_ExecuteShellCommand (someShell, someFolder) into shellResult
    return shellResult
 end git_ExecuteMergedShell
 
+
+--> Git | Commit
+-
+command git_CommitFile someFile, someComment, pViewDiff
+   set the itemdelimiter to slash
+   put item -1 of someFile into shortFile
+   put someFile into someFolder
+   put empty into item -1 of someFolder
+   shell_BashParamEscape shortFile
+   
+   put "git commit" into someShell
+   if pViewDiff is not false then put space & "-v" after someShell
+   put space & "-m" && kwote (someComment) after someShell
+   put space & shortFile after someShell
+   
+   put git_ExecuteShellCommand (someShell, someFolder) into shellResult
+   return shellResult
+end git_CommitFile
+
+command git_CommitChanges someComment, pGitCheckoutFolder, pAddIfNew, pViewDiff
+   repository_SetCommitComment someComment
+   
+   put "git commit" into someShell
+   if pAddIfNew is not false then put space & "-a" after someShell
+   if pViewDiff is not false then put space & "-v" after someShell
+   put space & "-m '" & someComment & "'" after someShell
+   
+   put git_ExecuteShellCommand (someShell, pGitCheckoutFolder) into shellResult
+   return shellResult
+end git_CommitChanges
+
+
+--> Git | File
+-
 function git_FileLog someFile, pCommitHash, pLogFormat, pHowMany, pAllBranches
    set the itemdelimiter to slash
    put item -1 of someFile into shortFile
@@ -1261,7 +1297,7 @@ end git_CommitedFiles
 
 function git_GetCommitFileHash relativePath, pBackNum
    if pBackNum is empty then put "1" into pBackNum
-   put git_ReverseFileHashes(relativePath, pBackNum) into shellResult
+   put git_ReverseFileHashes (relativePath, pBackNum) into shellResult
    return line - 1 of shellResult
 end git_GetCommitFileHash
 
@@ -1278,37 +1314,11 @@ function git_ReverseFileHashes relativePath, pMaxNum
    return shellResult
 end git_ReverseFileHashes
 
-command git_CommitChanges someComment, pGitCheckoutFolder, pAddIfNew, pViewDiff
-   repository_SetCommitComment someComment
-   
-   put "git commit" into someShell
-   if pAddIfNew is not false then put space & "-a" after someShell
-   if pViewDiff is not false then put space & "-v" after someShell
-   put space & "-m '" & someComment & "'" after someShell
-   
-   put git_ExecuteShellCommand (someShell, pGitCheckoutFolder) into shellResult
-   return shellResult
-end git_CommitChanges
-
 command git_HardReset
    put "git reset --hard HEAD" into someShell
    put git_ExecuteShellCommand (someShell) into shellResult
    return shellResult
 end git_HardReset
-
-command git_CommitFile someFile, someComment, pAddIfNew, pViewDiff
-   shell_BashParamEscape someFile
-   repository_SetCommitComment someComment
-   
-   put "git commit" into someShell
-   -- if pAddIfNew is not false then put space & "-a" after someShell
-   if pViewDiff is not false then put space & "-v" after someShell
-   put space & "-m '" & someComment & "'" after someShell
-   put space & someFile after someShell
-   
-   put git_ExecuteShellCommand(someShell) into shellResult
-   return shellResult
-end git_CommitFile
 
 
 --> Git | Status
