@@ -71,6 +71,16 @@ end menu_Search
 on _
 end _
 
+on menu_DisplayOldGitMenus
+   put revEnvironmentUserPluginsPath() & "/opn_Plugins/opn_Libraries/" into oldLibFolder
+   put oldLibFolder & "libOPN_GIT.rev" into stackPath
+   put the menu_CardNames of stack stackPath into mCards
+   
+   display_Index mCards, "Old GIT Menus,libOPN_GIT", "Global | Menu | Global Cards | Menu", "Global | Menu | Git | Line | Menu", "mDouble_SubStackMenu"
+   put the result into indexView
+   set the displayed_StackPath of indexView to stackPath
+end menu_DisplayOldGitMenus
+
 on submenu_Dev
    return "Dev | Menu"
 end submenu_Dev
@@ -105,18 +115,6 @@ end search_Term
 
 --> Dev | Menu
 -
-on menu_DisplayOldGitMenus
-   put revEnvironmentUserPluginsPath() & "/opn_Plugins/opn_Libraries/" into oldLibFolder
-   put oldLibFolder & "libOPN_GIT.rev" into stackPath
-   put the menu_CardNames of stack stackPath into mCards
-   
-   display_Index mCards, "Old GIT Menus,libOPN_GIT", "Global | Menu | Global Cards | Menu", "Global | Menu | Git | Line | Menu", "mDouble_SubStackMenu"
-   put the result into indexView
-   set the displayed_StackPath of indexView to stackPath
-end menu_DisplayOldGitMenus
-
-on _
-end _
 
 /*
 Was "Global | Git | Line | Stack | Log | Menu"

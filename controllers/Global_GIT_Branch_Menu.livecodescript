@@ -132,7 +132,10 @@ on menu_CreateNewBranch
    put "git branch" && branchName into someShell
    put _executeGit (someShell)  into shellResult
    
-   lcw_Notify shellResult, true
+   if shellResult is not empty then
+      breakpoint
+      display_Line shellResult, someShell
+   end if
 end menu_CreateNewBranch
 
 on menu_CreateAndCheckoutNewBranch
@@ -149,10 +152,11 @@ on menu_CreateAndCheckoutNewBranch
    put _askForBranchName() into branchName
    breakpoint
    
-   put "checkout -b" && branchName into someShell
+   put "git checkout -b" && branchName into someShell
    put _executeGit (someShell)  into shellResult
    
-   lcw_Notify shellResult, true
+   lcw_Notify shellResult
+   _refreshGitStatus
 end menu_CreateAndCheckoutNewBranch
 
 on _
@@ -248,6 +252,17 @@ end submenu_Dev
 
 --> Dev | menu
 -
+on menu_MergeWithBrach arrayView, localBranchName
+   put "git merge" && kwote (localBranchName) into someShell
+   put _executeGit (someShell)  into shellResult
+   
+   display_Lines shellResult, "git merge master"
+   _refreshGitStatus
+end menu_MergeWithBrach
+
+on _
+end _
+
 -- on menu_DiffLocalBranch localBranchName
 put "git diff" into someShell
 put space & "--numstat" after someShell
@@ -289,6 +304,15 @@ on menu_DiffLocalBranch arrayView, localBranchName
    -- set the table_HeaderTitle ["srcPath"] of tableView to "Global | Git | Diff | Raw | Menu"
 end menu_DiffLocalBranch
 
+
+getprop disabled_SwitchLocalBranch [arrayView]
+   put _executeGit ("git branch") into branchNames
+   if the number of lines of branchNames = 1 then
+      return true
+   else
+      return false
+   end if
+end disabled_SwitchLocalBranch
 
 --> Global | GIT | Branch | Menu | Props
 -
