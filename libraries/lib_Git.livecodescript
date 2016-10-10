@@ -115,16 +115,22 @@ command git_ExportFileRevision someFile, commitHash, pToFile
    return pToFile
 end git_ExportFileRevision
 
+-- command git_AddFile someFile
+set the itemdelimiter to slash
+put item -1 of someFile into shortFile
+put someFile into someFolder
+put empty into item -1 of someFolder
+
+put "git add" && kwote (shortFile) into someShell
+
+put git_ExecuteShellCommand (someShell, someFolder) into shellResult
+return shellResult
+end git_AddFile
+
 command git_AddFile someFile
-   set the itemdelimiter to slash
-   put item -1 of someFile into shortFile
-   put someFile into someFolder
-   put empty into item -1 of someFolder
-   
-   put "git add" && kwote (shortFile) into someShell
-   
-   put git_ExecuteShellCommand (someShell, someFolder) into shellResult
-   return shellResult
+   put "git add -v [[shortFile]]" into shellTemplate
+   git_ExecuteMergedShell shellTemplate, someFile
+   return the result
 end git_AddFile
 
 command git_ExecuteMergedShell shellTemplate, someFile
@@ -146,7 +152,7 @@ end git_ExecuteMergedShell
 
 --> Git | Commit
 -
-command git_CommitFile someFile, someComment, pViewDiff
+command git_CommitFile someFile, someComment, pVerbose
    set the itemdelimiter to slash
    put item -1 of someFile into shortFile
    put someFile into someFolder
@@ -154,9 +160,9 @@ command git_CommitFile someFile, someComment, pViewDiff
    shell_BashParamEscape shortFile
    
    put "git commit" into someShell
-   if pViewDiff is not false then put space & "-v" after someShell
-   put space & "-m" && kwote (someComment) after someShell
-   put space & shortFile after someShell
+   if pVerbose is not false then put space & "-v" after someShell
+   put space & "-m" && "'" & someComment & "'" after someShell
+   put space & "-- " && shortFile after someShell
    
    put git_ExecuteShellCommand (someShell, someFolder) into shellResult
    return shellResult
