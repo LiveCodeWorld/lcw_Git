@@ -118,7 +118,7 @@ on menu_SwitchLocalBranch arrayView, localBranchName
    _refreshGitStatus
    
    set the itemdelimiter to ":"
-   if word 1 of checkoutResult = "error" then
+   if item 1 of checkoutResult = "error" then
       put merge ("Failed to change branch. See error...") into someComment
       put checkoutResult
       answer warning someComment
