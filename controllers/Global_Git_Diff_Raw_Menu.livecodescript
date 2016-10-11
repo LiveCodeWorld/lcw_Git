@@ -15,9 +15,9 @@ local LocalArray
 -
 on menu_Init tObject
    put the array_View of tObject into arrayView
-   set the displayed_CheckoutFolder of arrayView to LocalArray ["gitCheckoutFolder"]
-   set the current_BranchName of arrayView to LocalArray ["currentBranchName"]
-   set the other_BranchName of arrayView to LocalArray ["otherBranchName"]
+   put the displayed_GitCheckoutFolder of arrayView into LocalArray ["gitCheckoutFolder"]
+   put the current_BranchName of arrayView into LocalArray ["currentBranchName"]
+   put the other_BranchName of arrayView into LocalArray ["otherBranchName"]
 end menu_Init
 
 
@@ -37,7 +37,7 @@ end menu_RevertStack
 --> Global | Git | Diff | Raw | Menu
 -
 on menu_RevertOpenStacks arrayView
-   put the displayed_CheckoutFolder of arrayView into gitCheckoutFolder
+   put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
    -- put the openstacks into openStackNames
    put revLoadedStacks("all") into loadedStackNames
    
@@ -56,6 +56,9 @@ on menu_RevertOpenStacks arrayView
          put the short name of stack thisBranchFile into thisStackName
          if thisStackName is among the lines of loadedStackNames then
             put thisStackName & CR after stackNamesToRevert
+            
+            breakpoint
+            revert stack thisStackName
          end if
       end if
    end repeat

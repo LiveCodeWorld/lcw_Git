@@ -30,6 +30,35 @@ end saveStackRequest
 
 --> Working On
 -
+command git_ExportFileRevision someFile, commitHash, pToFile
+   /*
+   fatal: Path 'libraries/lib_Git.livecodescript' exists, but not 'lib_Git.livecodescript'.
+   Did you mean '53195e09c611ab9ae89d62e996737dbb0e294334:libraries/lib_Git.livecodescript' aka '53195e09c611ab9ae89d62e996737dbb0e294334:./lib_Git.livecodescript'?
+   */
+   
+   set the itemdelimiter to slash
+   put item -1 of someFile into shortFile
+   -- put someFile into someFolder
+   -- put empty into item -1 of someFolder
+   
+   put checkout_FindRoot (someFile) into gitRootFolder
+   file_SetRelativePath someFile, gitRootFolder
+   
+   if pToFile is empty then
+      set the itemdelimiter to "/"
+      put the tempName & "/" into tempFolder
+      folder_CreateNested tempFolder
+      put tempFolder & shortFile into pToFile
+   end if
+   
+   shell_BashParamEscape someFile
+   put "git show" && commitHash & ":" & someFile into someShell
+   put space & ">" && kwote (pToFile) after someShell
+   
+   put git_ExecuteShellCommand (someShell, gitRootFolder) into shellResult 
+   return pToFile
+end git_ExportFileRevision
+
 command git_DisplayTempStackRevision someObject, commitHash 
    put the stack_Object of someObject into stackObject
    put the effective filename of stackObject into thisFile
@@ -101,35 +130,6 @@ command git_DisplayTempStackFromTreeish commitHash, pToFile
    set the destroystack of stack toFile to true
    set the destroywindow of stack toFile to true
 end git_DisplayTempStackFromTreeish
-
-command git_ExportFileRevision someFile, commitHash, pToFile
-   /*
-   fatal: Path 'libraries/lib_Git.livecodescript' exists, but not 'lib_Git.livecodescript'.
-   Did you mean '53195e09c611ab9ae89d62e996737dbb0e294334:libraries/lib_Git.livecodescript' aka '53195e09c611ab9ae89d62e996737dbb0e294334:./lib_Git.livecodescript'?
-   */
-   
-   set the itemdelimiter to slash
-   put item -1 of someFile into shortFile
-   -- put someFile into someFolder
-   -- put empty into item -1 of someFolder
-   
-   put checkout_FindRoot (someFile) into gitRootFolder
-   file_SetRelativePath someFile, gitRootFolder
-   
-   if pToFile is empty then
-      set the itemdelimiter to "/"
-      put the tempName & "/" into tempFolder
-      folder_CreateNested tempFolder
-      put tempFolder & shortFile into pToFile
-   end if
-   
-   shell_BashParamEscape someFile
-   put "git show" && commitHash & ":" & someFile into someShell
-   put space & ">" && kwote (pToFile) after someShell
-   
-   put git_ExecuteShellCommand (someShell, gitRootFolder) into shellResult 
-   return pToFile
-end git_ExportFileRevision
 
 -- command git_AddFile someFile
 set the itemdelimiter to slash

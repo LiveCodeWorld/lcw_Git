@@ -89,6 +89,31 @@ end git_ValidBranchName
 
 --> Global | GIT | Branch | Menu
 -
+on menu_ThisBranch arrayView
+   put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
+   put git_CurrentBranchName (gitCheckoutFolder)
+end menu_ThisBranch
+
+on menu_MergeWithMaster arrayView
+   put "git merge master" into someShell
+   put _executeGit (someShell)  into shellResult
+   
+   display_Lines shellResult, "git merge master"
+   _refreshGitStatus
+end menu_MergeWithMaster
+
+on menu_AbortMerge
+   -- Stop merge (in case of conflicts)
+   put "git merge --abort" into someShell
+   put _executeGit (someShell)  into shellResult
+   
+   display_Lines shellResult, "git merge master"
+   _refreshGitStatus
+end menu_AbortMerge
+
+on _
+end _
+
 on menu_SwitchLocalBranch arrayView, localBranchName
    /*
    To prepare for working on <branch>, switch to it by updating the index and the files in the working tree, and by pointing HEAD at the branch. 
@@ -166,26 +191,6 @@ end menu_CreateAndCheckoutNewBranch
 on _
 end _
 
-on menu_MergeWithMaster arrayView
-   put "git merge master" into someShell
-   put _executeGit (someShell)  into shellResult
-   
-   display_Lines shellResult, "git merge master"
-   _refreshGitStatus
-end menu_MergeWithMaster
-
-on menu_AbortMerge
-   -- Stop merge (in case of conflicts)
-   put "git merge --abort" into someShell
-   put _executeGit (someShell)  into shellResult
-   
-   display_Lines shellResult, "git merge master"
-   _refreshGitStatus
-end menu_AbortMerge
-
-on _
-end _
-
 on menu_DeleteLocalBranch arrayView, localBranchName
    breakpoint
    put "git branch -d" && kwote(localBranchName) into someShell
@@ -222,7 +227,7 @@ on menu_DiffLocalBranch arrayView, localBranchName
    
    display_Array dataArray, someShell, "Global | Git | Diff | Raw | Menu", "Global | Git | Diff | Raw | Line | Menu"
    put the result into arrayView
-   set the displayed_CheckoutFolder of arrayView to gitCheckoutFolder
+   set the displayed_GitCheckoutFolder of arrayView to gitCheckoutFolder
    set the current_BranchName of arrayView to currentBranchName
    set the other_BranchName of arrayView to localBranchName
    
