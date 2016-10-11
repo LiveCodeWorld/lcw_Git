@@ -198,14 +198,9 @@ command display_StackHistory someObject
    
    put the stack_Object of someObject into stackObject
    put the filename of stackObject into stackPath
-   
-   -- put git_GetRootFolder() into oRoot
-   -- git_SetRootFolder tempRootFolder -- should maybe do this built in with all git file related handlers?
-   put the git_CheckoutFolder of someObject into tempRootFolder
+   put the git_CheckoutFolder of someObject into gitCheckoutFolder
    
    put git_FileLog (stackPath) into simpleLog
-   -- put git_LogLinkArray (simpleLog) into logArray
-   -- put keys (logArray) into logIndex
    git_ProcessSimpleLogLines simpleLog, logArray, orderedCommentLines
    
    put "Stack Log for:" && the name of stackObject into someTitle
@@ -219,8 +214,8 @@ command display_StackHistory someObject
    set the log_Array of indexView to logArray
    set the displayed_Object of indexView to stackObject
    set the displayed_File of indexView to stackPath
+   set the displayed_GitCheckoutFolder of indexView to gitCheckoutFolder
    
-   -- git_SetRootFolder oRoot
    return treeView
 end display_StackHistory
 
