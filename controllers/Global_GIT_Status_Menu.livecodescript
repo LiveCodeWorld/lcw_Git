@@ -32,20 +32,46 @@ end refreshGitStatus
 
 --> Global | GIT | Status | Menu
 -
+on submenu_Branch
+   return "Global | GIT | Branch | Menu"
+end submenu_Branch
+
 on menu_refreshGitStatus
    stack_SaveEdited "all"
    refreshGitStatus
 end menu_refreshGitStatus
 
-on menu_DisplayFullStatusReport arrayView
+on menu_DisplayStatusReport arrayView
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
    git_DisplayStatusLines gitCheckoutFolder
-end menu_DisplayFullStatusReport
+end menu_DisplayStatusReport
 
-on submenu_Branch
-   return "Global | GIT | Branch | Menu"
-end submenu_Branch
+on menu_DisplayCommitHistory arrayView
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   put git_CurrentBranchName (gitCheckoutFolder) into branchName
+   put git_ExecuteShellCommand ("git log", gitCheckoutFolder) into commitHistory
+   display_Lines commitHistory, "git log", "mDoubleUp_GitLog", branchName
+   put the result into indexView
+   set the title_Menu of indexView to "Global | Git | Log | Menu"
+   set the line_Menu of indexView to "Global | Git | Line | Log | Menu"
+end menu_DisplayCommitHistory
 
+command mDoubleUp_GitLog indexView, someLine
+   switch word 1 of someLine
+      case "commit"
+         put word 2 of someLine into commitHash
+         lcw_Answer merge ("Do you want to revert to checked out project [[commitHash]]?")
+         
+         breakpoint
+         put "git checkout" && commitHash into someShell
+         put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+         put git_ExecuteShellCommand (someShell, gitCheckoutFolder) into shellResult
+         refreshGitStatus
+         break
+      default
+   end switch
+end mDoubleUp_GitLog
+   
 on _
 end _
 
