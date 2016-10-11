@@ -225,8 +225,8 @@ command display_StackHistory someObject
 end display_StackHistory
 
 function git_ConstructStatusArray gitStatusTable , pNoComments
-   put line -1 of gitStatusTable into gitHint
-   delete line -1 of gitStatusTable
+   -- put line -1 of gitStatusTable into gitHint
+   -- delete line -1 of gitStatusTable
    
    filter gitStatusTable without "#   *"
    filter gitStatusTable without "#"
