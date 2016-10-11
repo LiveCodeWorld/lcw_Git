@@ -17,16 +17,41 @@ on menu_Init tObject
    put the display_View of tObject into displayView
    put displayView into LocalArray ["displayView"]
    put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
-   put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitCheckoutFolder"]
+   put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitFolder"]
 end menu_Init
+
+
+--> Display | Events
+-
+command mDoubleUp_GitLog indexView, someLine
+   put LocalArray ["gitFolder"] into gitFolder
+   
+   switch word 1 of someLine
+      case "commit"
+         put word 2 of someLine into commitHash
+         
+         put commitHash & ":" & "lcw_GIT.livecode" into treeish
+         put git_List (treeish, gitFolder)
+         
+         exit to top
+         lcw_Answer merge ("Do you want to revert to checked out project [[commitHash]]?")
+         
+         breakpoint
+         put "git checkout" && commitHash into someShell
+         put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
+         refreshGitStatus
+         break
+      default
+   end switch
+end mDoubleUp_GitLog
 
 
 --> Private
 -
 private command refreshGitStatus
    put LocalArray ["displayView"] into displayView
-   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   display_GitFolderStatus gitCheckoutFolder, displayView
+   put LocalArray ["gitFolder"] into gitFolder
+   display_GitFolderStatus gitFolder, displayView
 end refreshGitStatus
 
 
@@ -42,44 +67,33 @@ on menu_refreshGitStatus
 end menu_refreshGitStatus
 
 on menu_DisplayStatusReport arrayView
-   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   git_DisplayStatusLines gitCheckoutFolder
+   put LocalArray ["gitFolder"] into gitFolder
+   git_DisplayStatusLines gitFolder
 end menu_DisplayStatusReport
 
 on menu_DisplayCommitHistory arrayView
-   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   put git_CurrentBranchName (gitCheckoutFolder) into branchName
-   put git_ExecuteShellCommand ("git log", gitCheckoutFolder) into commitHistory
+   put LocalArray ["gitFolder"] into gitFolder
+   put git_CurrentBranchName (gitFolder) into branchName
+   put git_ExecuteShellCommand ("git log", gitFolder) into commitHistory
    display_Lines commitHistory, "git log", "mDoubleUp_GitLog", branchName
    put the result into indexView
    set the title_Menu of indexView to "Global | Git | Log | Menu"
    set the line_Menu of indexView to "Global | Git | Line | Log | Menu"
 end menu_DisplayCommitHistory
 
-command mDoubleUp_GitLog indexView, someLine
-   switch word 1 of someLine
-      case "commit"
-         put word 2 of someLine into commitHash
-         lcw_Answer merge ("Do you want to revert to checked out project [[commitHash]]?")
-         
-         breakpoint
-         put "git checkout" && commitHash into someShell
-         put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-         put git_ExecuteShellCommand (someShell, gitCheckoutFolder) into shellResult
-         refreshGitStatus
-         break
-      default
-   end switch
-end mDoubleUp_GitLog
-   
+on menu_ListCommits
+   put LocalArray ["gitFolder"] into gitFolder
+   put git_ListCommitHashes (gitFolder)
+end menu_ListCommits
+
 on _
 end _
 
 on menu_AddAllUntracked arrayView
    set the cursor to watch
-   put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
+   put the displayed_GitCheckoutFolder of arrayView into gitFolder
    
-   git_AddEverything gitCheckoutFolder
+   git_AddEverything gitFolder
    put the result into shellResult
    if shellResult is not empty then
       lcw_Notify shellResult
@@ -88,10 +102,10 @@ on menu_AddAllUntracked arrayView
 end menu_AddAllUntracked
 
 on menu_StageThenCommit arrayView
-   put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
+   put the displayed_GitCheckoutFolder of arrayView into gitFolder
    put lcw_Ask ("Comment on this change...") into someComment
    
-   git_CommitChanges someComment, gitCheckoutFolder
+   git_CommitChanges someComment, gitFolder
    refreshGitStatus
 end menu_StageThenCommit
 
@@ -225,7 +239,7 @@ on menu_SelectProject displayView, gitProjectName
    breakpoint
    display_GitStatus gitProjectName
    
-   put project_GetFolder (gitProjectName) into gitCheckoutFolder
+   put project_GetFolder (gitProjectName) into gitFolder
    
    put gitProjectName into LocalArray ["gitProjectName"]
    
@@ -254,8 +268,8 @@ end menu_ArrayViewBehavior
 --> Global | GIT | Status | Menu | Props
 -
 getprop git_ProjectName
-   put git_GetRootFolder() into gitCheckoutFolder
-   return gitCheckoutFolder
+   put git_GetRootFolder() into gitFolder
+   return gitFolder
    -- return LocalArray ["gitProjectName"]
 end git_ProjectName
 

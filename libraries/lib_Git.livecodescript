@@ -30,6 +30,28 @@ end saveStackRequest
 
 --> Working On
 -
+--> GIT | List
+-
+function git_ListCommitHashes gitFolder
+   put "git rev-list --all" into someShell
+   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
+   return shellResult
+end git_ListCommitHashes
+
+function git_List treeish, gitFolder
+   -- more or less same as "ls"
+   /*
+   returns something like:
+   
+   100644 blob 7f111638f983c6a775fbb7eaf12131390e1962f4	.gitignore
+   100755 blob a20f8ec233c42d28d68a80b9608d789a22d9cd34	opn.rev
+   040000 tree 5ccc83a953bdf3261bbee2b28fad8f9260ea92b1	opn_Plugins
+   */
+   put "git ls-tree" && treeish into someShell
+   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
+   return shellResult
+end git_List
+
 command git_ExportFileRevision someFile, commitHash, pToFile
    /*
    fatal: Path 'libraries/lib_Git.livecodescript' exists, but not 'lib_Git.livecodescript'.
@@ -1408,32 +1430,6 @@ function git_ExtractLogMetadataArray logText
    
    return metadataArray
 end git_ExtractLogMetadataArray
-
-
---> GIT | List
--
-function git_ListCommitHashes
-   put "git rev-list --all" into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
-   return shellResult
-end git_ListCommitHashes
-
-
---> GIT | List | Tree
--
-function git_List treeish
-   -- more or less same as "ls"
-   /*
-   returns something like:
-   
-   100644 blob 7f111638f983c6a775fbb7eaf12131390e1962f4	.gitignore
-   100755 blob a20f8ec233c42d28d68a80b9608d789a22d9cd34	opn.rev
-   040000 tree 5ccc83a953bdf3261bbee2b28fad8f9260ea92b1	opn_Plugins
-   */
-   put "git ls-tree" && treeish into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
-   return shellResult
-end git_List
 
 
 --> GIT | Treeish
