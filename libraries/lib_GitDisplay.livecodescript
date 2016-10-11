@@ -43,11 +43,9 @@ getprop git_StatusMenuTitle
    end switch
 end git_StatusMenuTitle
 
-function menu_Exists mTitle
-   put menu_GetGlobalController (mTitle) into mController
-   return exists (mController)
-end menu_Exists
 
+--> Git | Display | Status | Events
+-
 on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
    text_AddTrailing gitCheckoutFolder, slash
@@ -70,6 +68,84 @@ on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
    end switch
 end mDoubleUp_DisplayGitFile
 
+
+--> Git | Display | Stack
+-
+command git_DisplayTempStackRevision someObject, commitHash
+   put the stack_Object of someObject into stackObject
+   put the effective filename of stackObject into thisFile
+   
+   put the short name of stack thisFile into oName
+   
+   if exists (stack thisFile) is false then
+      answer warning "Stack does not exist!"
+      breakpoint
+      exit to top
+   end if
+   
+   set lockmessages to true
+   git_ExportFileRevision thisFile, commitHash
+   put the result into toFile
+   
+   if exists (stack toFile) is false then
+      answer warning "Revision Stack does not exist!"
+      breakpoint
+      
+      put toFile into toFolder
+      set the itemdelimiter to slash
+      put empty into item -1 of toFolder
+      finder_Reveal toFolder
+      
+      launch_Atom toFile
+      exit to top
+   end if
+   
+   put "tempStackName" && oName into tempStackName
+   put oName && commitHash into exportedRevisionName
+   
+   try
+      set lockmessages to true
+      set the name of stack thisFile to tempStackName -- not totally sure this is needed
+      set the name of stack toFile to exportedRevisionName
+      set the name of stack thisFile to oName -- not totally sure this is needed (maybe just keep it as it was). But tricky to debug.
+      set lockmessages to false
+      
+      set the destroystack of stack toFile to true
+      set the destroywindow of stack toFile to true     
+   catch e
+      set the name of stack thisFile to oName
+      
+      answer warning merge ("Problem opening versioned [[stackObject]]!")
+      breakpoint
+      put there is a file toFile into fileExists
+      get url ("binfile:" & toFile)
+      launch_Atom toFile
+      exit to top
+   end try
+   
+   set the label of stack toFile to exportedRevisionName
+   put the name of stack toFile into newStackObject
+   go to stack toFile
+end git_DisplayTempStackRevision
+
+command git_DisplayTempStackFromTreeish commitHash, pToFile
+   breakpoint
+   git_ExportFileRevision relativePath, commitHash
+   put the result into toFile
+   
+   set lockmessages to true
+   put the name of stack toFile into oName
+   set the name of stack toFile to (oName && treeish)
+   go to stack toFile
+   set lockmessages to false
+   
+   set the destroystack of stack toFile to true
+   set the destroywindow of stack toFile to true
+end git_DisplayTempStackFromTreeish
+
+
+--> Git | Display | Status
+-
 command git_RefreshDisplay pTreeTitle
    -- this is now handled locally in each display
    -- look at this to dig out older code for files and log.
@@ -200,7 +276,7 @@ command display_StackHistory someObject
    put the filename of stackObject into stackPath
    put the git_CheckoutFolder of someObject into gitCheckoutFolder
    
-   put git_FileLog (stackPath) into simpleLog
+   put git_GetFileLog (stackPath) into simpleLog
    git_ProcessSimpleLogLines simpleLog, logArray, orderedCommentLines
    
    put "Stack Log for:" && the name of stackObject into someTitle
@@ -280,7 +356,7 @@ end git_ConstructStatusArray
 -
 -- function git_FileCommitHashArray someFile, pHowMany, pAllBranches
 -- not used
-put git_FileLog (someFile, pHowMany, pAllBranches) into simpleLog
+put git_GetFileLog (someFile, pHowMany, pAllBranches) into simpleLog
 put git_LogLinkArray (simpleLog) into commitHashArray
 return commitHashArray
 end git_FileCommitHashArray
@@ -312,7 +388,7 @@ Old way of doing it. Probably better to use arrays.
 */
 
 function git_FileLogOutline someFile, pHowMany, pAllBranches
-   put git_FileLog (someFile, pHowMany, pAllBranches) into simpleLog
+   put git_GetFileLog (someFile, pHowMany, pAllBranches) into simpleLog
    put git_LogLinkOutline (simpleLog) into someOutline
    return someOutline
 end git_FileLogOutline
