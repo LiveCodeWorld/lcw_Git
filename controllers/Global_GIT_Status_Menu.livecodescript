@@ -33,6 +33,7 @@ end refreshGitStatus
 --> Global | GIT | Status | Menu
 -
 on menu_refreshGitStatus
+   stack_SaveEdited "all"
    refreshGitStatus
 end menu_refreshGitStatus
 

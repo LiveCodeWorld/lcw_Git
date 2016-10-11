@@ -16,7 +16,7 @@ local LocalArray
 on menu_Init tObject
    get the hilited_Element of tObject
    put item 1 of it into LocalArray ["topKey"]
-   
+
    put the display_View of tObject into displayView
    put displayView into LocalArray ["displayView"]
    put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
@@ -52,7 +52,7 @@ end _executeGit
 
 private function _getCheckoutFolder
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   
+
    -- could check here that the folder is versioned by git
    if there is not a folder gitCheckoutFolder then
       answer warning "Cannot locate git folder for this action!"
@@ -91,17 +91,17 @@ end git_ValidBranchName
 -
 on menu_SwitchLocalBranch arrayView, localBranchName
    /*
-   To prepare for working on <branch>, switch to it by updating the index and the files in the working tree, and by pointing HEAD at the branch. 
+   To prepare for working on <branch>, switch to it by updating the index and the files in the working tree, and by pointing HEAD at the branch.
    Local modifications to the files in the working tree are kept, so that they can be committed to the <branch>.
-   
-   Switching branches carries uncommitted changes with you. 
+
+   Switching branches carries uncommitted changes with you.
    If you don't want to do that, either commit first, run git checkout . to undo them, or run git stash before switching. (You can get your changes back with git stash apply)
    -- http://stackoverflow.com/questions/5531362/why-git-keeps-showing-my-changes-when-i-switch-branches-modified-added-deleted
    */
-   
+
    put merge ("Sure you want to switch to branch '[[localBranchName]]'?") into someComment
    lcw_Answer someComment
-   
+
    put stack_ListEditedNames() into editedStacks
    if editedStacks is not empty then
       answer "The state of your file system will change after executing this command. Do you want to save any stacks you have edited first?" with "Save" and "No"
@@ -109,17 +109,25 @@ on menu_SwitchLocalBranch arrayView, localBranchName
          stack_SaveEdited "all"
       end if
    end if
-   
+
    put "git checkout" && kwote(localBranchName) into someShell
-   put _executeGit (someShell)  into shellResult
-   
-   lcw_Notify shellResult, true
+   put _executeGit (someShell)  into checkoutResult
+
+   -- lcw_Notify checkoutResult
+   display_Lines checkoutResult, someShell
    _refreshGitStatus
-   
-   put merge ("Be aware that any open stacks may have changed on your file system due to switching branches. You should revert all open staks to ensure you are working with the new files.") into someComment
-   answer someComment
-   
-   -- here we could script reverting ll local files
+
+   set the itemdelimiter to ":"
+   if item 1 of checkoutResult = "error" then
+      put merge ("Failed to change branch. See error...") into someComment
+      put checkoutResult
+      answer warning someComment
+   else
+      put merge ("Be aware that any open stacks may have changed on your file system due to switching branches. You should revert all open staks to ensure you are working with the new files.") into someComment
+      answer someComment
+
+      -- here we could script reverting ll local files
+   end if
 end menu_SwitchLocalBranch
 
 on _
@@ -128,14 +136,11 @@ end _
 on menu_CreateNewBranch
    put _askForBranchName() into branchName
    breakpoint
-   
+
    put "git branch" && branchName into someShell
    put _executeGit (someShell)  into shellResult
-   
-   if shellResult is not empty then
-      breakpoint
-      display_Line shellResult, someShell
-   end if
+
+   lcw_Notify shellResult, true
 end menu_CreateNewBranch
 
 on menu_CreateAndCheckoutNewBranch
@@ -144,19 +149,18 @@ on menu_CreateAndCheckoutNewBranch
    $ git checkout -b iss53
    Switched to a new branch "iss53"
    This is shorthand for:
-   
+
    $ git branch iss53
    $ git checkout iss5
    */
-   
+
    put _askForBranchName() into branchName
    breakpoint
-   
-   put "git checkout -b" && branchName into someShell
+
+   put "checkout -b" && branchName into someShell
    put _executeGit (someShell)  into shellResult
-   
-   lcw_Notify shellResult
-   _refreshGitStatus
+
+   lcw_Notify shellResult, true
 end menu_CreateAndCheckoutNewBranch
 
 on _
@@ -165,19 +169,19 @@ end _
 on menu_MergeWithMaster arrayView
    put "git merge master" into someShell
    put _executeGit (someShell)  into shellResult
-   
+
    display_Lines shellResult, "git merge master"
    _refreshGitStatus
 end menu_MergeWithMaster
 
-on menu_Abortmerge
+on menu_AbortMerge
    -- Stop merge (in case of conflicts)
    put "git merge --abort" into someShell
    put _executeGit (someShell)  into shellResult
-   
+
    display_Lines shellResult, "git merge master"
    _refreshGitStatus
-end menu_Abortmerge
+end menu_AbortMerge
 
 on _
 end _
@@ -202,19 +206,30 @@ end menu_RemoteBranch
 on _
 end _
 
-on menu_ViewBranches arrayView, menuChoice 
-   switch menuChoice
-      case "Local branches"
-         put "git branch" into someShell
-         break
-      case "Local and remote brances"
-         put "git branch -a" into someShell
-         break
-   end switch
-   
-   put _executeGit (someShell)  into shellResult
-   display_Index shellResult
-end menu_ViewBranches
+on menu_DiffLocalBranch arrayView, localBranchName
+   put "git diff" into someShell
+   -- put space & "--git-diff-index" after someShell
+   put space & "--raw" after someShell
+
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
+   put git_CurrentBranchName (gitCheckoutFolder) into currentBranchName
+   shell_BashParamEscape currentBranchName
+   shell_BashParamEscape localBranchName
+   put space & currentBranchName & ".." & localBranchName after someShell
+
+   put _executeGit (someShell)  into rawDiff
+   put git_ParseRawDiff (rawDiff) into dataArray
+
+   display_Array dataArray, someShell, "Global | Git | Diff | Raw | Menu", "Global | Git | Diff | Raw | Line | Menu"
+   put the result into arrayView
+   set the displayed_GitCheckoutFolder of arrayView to gitCheckoutFolder
+   set the current_BranchName of arrayView to currentBranchName
+   set the other_BranchName of arrayView to localBranchName
+
+   -- display_Table dataArray, someShell, true, true, true, "status,srcPath,srcHash,dstHash,srcMode,dstMode,dstPath", "status,srcPath,srcHash,dstHash"
+   -- put the result into tableView
+   -- set the table_BodyTitle of tableView to "Global | Git | Diff | Raw | Menu"
+end menu_DiffLocalBranch
 
 on _
 end _
@@ -241,7 +256,7 @@ on menu_BranchDocumentation arrayView, whichDoc
          put "https://gist.github.com/hofmannsven/6814451" into someURL
          break
    end switch
-   
+
    launch url someURL
 end menu_BranchDocumentation
 
@@ -252,16 +267,19 @@ end submenu_Dev
 
 --> Dev | menu
 -
-on menu_MergeWithBrach arrayView, localBranchName
-   put "git merge" && kwote (localBranchName) into someShell
-   put _executeGit (someShell)  into shellResult
-   
-   display_Lines shellResult, "git merge master"
-   _refreshGitStatus
-end menu_MergeWithBrach
+on menu_ViewBranches arrayView, menuChoice
+   switch menuChoice
+      case "Local branches"
+         put "git branch" into someShell
+         break
+      case "Local and remote brances"
+         put "git branch -a" into someShell
+         break
+   end switch
 
-on _
-end _
+   put _executeGit (someShell)  into shellResult
+   display_Index shellResult
+end menu_ViewBranches
 
 -- on menu_DiffLocalBranch localBranchName
 put "git diff" into someShell
@@ -278,48 +296,16 @@ put git_ExecuteShellCommand(someShell) into someTable
 put "+" & tab & "-" & tab & "relative file name" & CR before someTable
 display_Table someTable, someShell, true, true, true
 put the result into tableView
--- set the menu_Title of 
+-- set the menu_Title of
 end menu_DiffLocalBranch
 
-on menu_DiffLocalBranch arrayView, localBranchName
-   breakpoint
-   put "git diff" into someShell
-   -- put space & "--git-diff-index" after someShell
-   put space & "--raw" after someShell
-   
-   put git_CurrentBranchName() into currentBranchName
-   
-   shell_BashParamEscape currentBranchName
-   shell_BashParamEscape localBranchName
-   put space & currentBranchName & ".." & localBranchName after someShell
-   
-   put git_ExecuteShellCommand (someShell) into rawDiff
-   put git_ParseRawDiff (rawDiff) into dataArray
-   
-   display_Table dataArray, someShell, true, true, true, "status,srcPath,srcHash,dstHash,srcMode,dstMode,dstPath", "status,srcPath,srcHash,dstHash"
-   put the result into tableView
-    
-   -- set the menu_Title of tableView to "Global | Git | Diff | Raw | Menu"
-   set the table_BodyTitle of tableView to "Global | Git | Diff | Raw | Menu"
-   -- set the table_HeaderTitle ["srcPath"] of tableView to "Global | Git | Diff | Raw | Menu"
-end menu_DiffLocalBranch
-
-
-getprop disabled_SwitchLocalBranch [arrayView]
-   put _executeGit ("git branch") into branchNames
-   if the number of lines of branchNames = 1 then
-      return true
-   else
-      return false
-   end if
-end disabled_SwitchLocalBranch
 
 --> Global | GIT | Branch | Menu | Props
 -
-getprop local_BranchNames [arrayView]   
+getprop local_BranchNames [arrayView]
    put "git branch" into someShell
    put _executeGit (someShell)  into shellResult
-   
+
    repeat for each line someLine in shellResult
       if word 1 of someLine = "*" then
          put "(" & word 2 to -1 of someLine & CR after branchNames
@@ -341,7 +327,7 @@ getprop branch_Names
    -- put "git branch" into someShell
    put "git branch -a" into someShell
    put _executeGit (someShell)  into shellResult
-   
+
    repeat for each line someLine in shellResult
       if word 1 of someLine = "*" then
          put "(" & word 2 to -1 of someLine & CR after branchNames
@@ -366,18 +352,20 @@ function git_ParseRawDiff rawDiff
          lcw_Notify someLine, true
          next repeat
       end if
-      
+
       put item 1 of someLine into firstBit
       put item 2 of someLine into srcPath
       put item 3 of someLine into dstPath
-      
+
       put word 1 of firstBit into srcMode
       put word 2 of firstBit into dstMode
-      
+
       put word 3 of firstBit into srcHash
       put word 4 of firstBit into dstHash
       put word 5 of firstBit into status
-      
+
+      /*
+      -- for datagrid
       put srcMode into dataArray [lineNum]["srcMode"]
       put dstMode into dataArray [lineNum]["dstMode"]
       put srcHash into dataArray [lineNum]["srcHash"]
@@ -385,7 +373,15 @@ function git_ParseRawDiff rawDiff
       put srcPath into dataArray [lineNum]["srcPath"]
       put dstPath into dataArray [lineNum]["dstPath"]
       put status into dataArray [lineNum]["status"]
-      
+      */
+
+      put srcMode into dataArray [srcPath]["srcMode"]
+      put dstMode into dataArray [srcPath]["dstMode"]
+      put srcHash into dataArray [srcPath]["srcHash"]
+      put dstHash into dataArray [srcPath]["dstHash"]
+      put dstPath into dataArray [srcPath]["dstPath"]
+      put status into dataArray [srcPath]["status"]
+
       add 1 to lineNum
    end repeat
    return dataArray
@@ -394,12 +390,12 @@ end git_ParseRawDiff
 command git_DeconstructBranchNames @localBranchNames, @remoteBranches, @remoteNames, @remoteBranchNames, @remoteMappings
    put "git branch -a" into someShell
    put git_ExecuteShellCommand(someShell) into shellResult
-   
+
    set the itemdelimiter to "/"
    repeat for each line someLine in shellResult
       put char 1 to 2 of someLine into starBit
       put char 3 to -1 of someLine into branchBit
-      
+
       if item 1 of branchBit = "remotes" and the number of items of branchBit > 1 then
          if branchBit contains " -> " then
             put branchBit & CR after remoteMappings
@@ -422,4 +418,3 @@ command git_DeconstructBranchNames @localBranchNames, @remoteBranches, @remoteNa
    delete char -1 of remoteBranchNames
    delete char -1 of remoteMappings
 end git_DeconstructBranchNames
-

@@ -55,7 +55,7 @@ on menu_GitStatus scriptObject
    /*
    display_Outline someOutline, "Git Status", "Global | GIT | Status | Menu"
    put the result into treeView
-   set the displayed_CheckoutFolder of treeView to checkoutFolder
+   set the displayed_GitCheckoutFolder of treeView to checkoutFolder
    */
 end menu_GitStatus
 

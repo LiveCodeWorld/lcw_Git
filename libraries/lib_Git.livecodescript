@@ -5,15 +5,60 @@ name: lib_Git
 type: library
 copyright: David Bovill
 license: GPLv3
-version: 0.8
+version: 0.81
 
 /*
 A library for working with GIT.
 It has not been tested on unix (should work fine), or Windows machines (beware of line ending issues).
 */
 
+
+--> Events
+-
+on saveStackRequest
+   repeat for each line stackName in the openStacks
+      if word 1 to 2 of stackName = "Display Array" and the label of stack stackName = "Git Status" then
+         put the long id of group 1 of cd 1 of stack stackName into displayView
+         put the displayed_GitCheckoutFolder of displayView into gitCheckoutFolder
+         
+         send "display_GitFolderStatus gitCheckoutFolder,displayView" to displayView in 0 seconds -- so we save first 
+      end if
+   end repeat
+   pass saveStackRequest
+end saveStackRequest
+
+
 --> Working On
 -
+command git_ExportFileRevision someFile, commitHash, pToFile
+   /*
+   fatal: Path 'libraries/lib_Git.livecodescript' exists, but not 'lib_Git.livecodescript'.
+   Did you mean '53195e09c611ab9ae89d62e996737dbb0e294334:libraries/lib_Git.livecodescript' aka '53195e09c611ab9ae89d62e996737dbb0e294334:./lib_Git.livecodescript'?
+   */
+   
+   set the itemdelimiter to slash
+   put item -1 of someFile into shortFile
+   -- put someFile into someFolder
+   -- put empty into item -1 of someFolder
+   
+   put checkout_FindRoot (someFile) into gitRootFolder
+   file_SetRelativePath someFile, gitRootFolder
+   
+   if pToFile is empty then
+      set the itemdelimiter to "/"
+      put the tempName & "/" into tempFolder
+      folder_CreateNested tempFolder
+      put tempFolder & shortFile into pToFile
+   end if
+   
+   shell_BashParamEscape someFile
+   put "git show" && commitHash & ":" & someFile into someShell
+   put space & ">" && kwote (pToFile) after someShell
+   
+   put git_ExecuteShellCommand (someShell, gitRootFolder) into shellResult 
+   return pToFile
+end git_ExportFileRevision
+
 command git_DisplayTempStackRevision someObject, commitHash 
    put the stack_Object of someObject into stackObject
    put the effective filename of stackObject into thisFile
@@ -86,48 +131,28 @@ command git_DisplayTempStackFromTreeish commitHash, pToFile
    set the destroywindow of stack toFile to true
 end git_DisplayTempStackFromTreeish
 
-command git_ExportFileRevision someFile, commitHash, pToFile
-   /*
-   fatal: Path 'libraries/lib_Git.livecodescript' exists, but not 'lib_Git.livecodescript'.
-   Did you mean '53195e09c611ab9ae89d62e996737dbb0e294334:libraries/lib_Git.livecodescript' aka '53195e09c611ab9ae89d62e996737dbb0e294334:./lib_Git.livecodescript'?
-   */
-   
-   set the itemdelimiter to slash
-   put item -1 of someFile into shortFile
-   -- put someFile into someFolder
-   -- put empty into item -1 of someFolder
-   
-   put checkout_FindRoot (someFile) into gitRootFolder
-   file_SetRelativePath someFile, gitRootFolder
-   
-   if pToFile is empty then
-      set the itemdelimiter to "/"
-      put the tempName & "/" into tempFolder
-      folder_CreateNested tempFolder
-      put tempFolder & shortFile into pToFile
-   end if
-   
-   shell_BashParamEscape someFile
-   put "git show" && commitHash & ":" & someFile into someShell
-   put space & ">" && kwote (pToFile) after someShell
-   
-   put git_ExecuteShellCommand (someShell, gitRootFolder) into shellResult 
-   return pToFile
-end git_ExportFileRevision
+-- command git_AddFile someFile
+set the itemdelimiter to slash
+put item -1 of someFile into shortFile
+put someFile into someFolder
+put empty into item -1 of someFolder
+
+put "git add" && kwote (shortFile) into someShell
+
+put git_ExecuteShellCommand (someShell, someFolder) into shellResult
+return shellResult
+end git_AddFile
 
 command git_AddFile someFile
-   set the itemdelimiter to slash
-   put item -1 of someFile into shortFile
-   put someFile into someFolder
-   put empty into item -1 of someFolder
-   
-   put "git add" && kwote (shortFile) into someShell
-   
-   put git_ExecuteShellCommand (someShell, someFolder) into shellResult
-   return shellResult
+   put "git add -- [[shortFile]]" into shellTemplate
+   git_ExecuteMergedShell shellTemplate, someFile
+   return the result
 end git_AddFile
 
 command git_ExecuteMergedShell shellTemplate, someFile
+   replace "{" with "[[" in shellTemplate
+   replace "}" with "]]" in shellTemplate
+   
    set the itemdelimiter to slash
    put item -1 of someFile into shortFile
    put someFile into someFolder
@@ -136,11 +161,44 @@ command git_ExecuteMergedShell shellTemplate, someFile
    shell_BashParamEscape shortFile
    put merge (shellTemplate) into someShell
    
-   breakpoint
-   put git_ExecuteShellCommand (someShell, someFolder) into shellResult
+  put git_ExecuteShellCommand (someShell, someFolder) into shellResult
    return shellResult
 end git_ExecuteMergedShell
 
+
+--> Git | Commit
+-
+command git_CommitFile someFile, someComment, pVerbose
+   set the itemdelimiter to slash
+   put item -1 of someFile into shortFile
+   put someFile into someFolder
+   put empty into item -1 of someFolder
+   shell_BashParamEscape shortFile
+   
+   put "git commit" into someShell
+   if pVerbose is not false then put space & "-v" after someShell
+   put space & "-m" && "'" & someComment & "'" after someShell
+   put space & "-- " && shortFile after someShell
+   
+   put git_ExecuteShellCommand (someShell, someFolder) into shellResult
+   return shellResult
+end git_CommitFile
+
+command git_CommitChanges someComment, pGitCheckoutFolder, pAddAll, pViewDiff
+   repository_SetCommitComment someComment
+   
+   put "git commit" into someShell
+   if pAddAll is not false then put space & "-a" after someShell
+   if pViewDiff is not false then put space & "-v" after someShell
+   put space & "-m '" & someComment & "'" after someShell
+   
+   put git_ExecuteShellCommand (someShell, pGitCheckoutFolder) into shellResult
+   return shellResult
+end git_CommitChanges
+
+
+--> Git | File
+-
 function git_FileLog someFile, pCommitHash, pLogFormat, pHowMany, pAllBranches
    set the itemdelimiter to slash
    put item -1 of someFile into shortFile
@@ -1022,9 +1080,8 @@ end git_StashArray
 
 --> GIT
 -
-function git_CurrentBranchName
-   -- was "current_BranchName"
-   put git_ExecuteShellCommand("git branch") into shellResult
+function git_CurrentBranchName checkoutFolder
+   put git_ExecuteShellCommand ("git branch", checkoutFolder) into shellResult
    repeat for each line someLine in shellResult
       if word 1 of someLine = "*" then
          return word 2 to -1 of someLine
@@ -1262,7 +1319,7 @@ end git_CommitedFiles
 
 function git_GetCommitFileHash relativePath, pBackNum
    if pBackNum is empty then put "1" into pBackNum
-   put git_ReverseFileHashes(relativePath, pBackNum) into shellResult
+   put git_ReverseFileHashes (relativePath, pBackNum) into shellResult
    return line - 1 of shellResult
 end git_GetCommitFileHash
 
@@ -1279,37 +1336,11 @@ function git_ReverseFileHashes relativePath, pMaxNum
    return shellResult
 end git_ReverseFileHashes
 
-command git_CommitChanges someComment, pGitCheckoutFolder, pAddIfNew, pViewDiff
-   repository_SetCommitComment someComment
-   
-   put "git commit" into someShell
-   if pAddIfNew is not false then put space & "-a" after someShell
-   if pViewDiff is not false then put space & "-v" after someShell
-   put space & "-m '" & someComment & "'" after someShell
-   
-   put git_ExecuteShellCommand (someShell, pGitCheckoutFolder) into shellResult
-   return shellResult
-end git_CommitChanges
-
 command git_HardReset
    put "git reset --hard HEAD" into someShell
    put git_ExecuteShellCommand (someShell) into shellResult
    return shellResult
 end git_HardReset
-
-command git_CommitFile someFile, someComment, pAddIfNew, pViewDiff
-   shell_BashParamEscape someFile
-   repository_SetCommitComment someComment
-   
-   put "git commit" into someShell
-   -- if pAddIfNew is not false then put space & "-a" after someShell
-   if pViewDiff is not false then put space & "-v" after someShell
-   put space & "-m '" & someComment & "'" after someShell
-   put space & someFile after someShell
-   
-   put git_ExecuteShellCommand(someShell) into shellResult
-   return shellResult
-end git_CommitFile
 
 
 --> Git | Status
