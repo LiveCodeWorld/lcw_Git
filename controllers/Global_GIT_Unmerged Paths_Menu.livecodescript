@@ -28,7 +28,7 @@ on menu_Documentation arrayView, whichDoc
          put "https://www.youtube.com/watch?v=zz7NuSCH6II" into someURL
          break
    end switch
-   
+
    launch url someURL
 end menu_Documentation
 
@@ -62,12 +62,12 @@ on menu_DisplayThisBranchFile arrayView
    go to stack ourFile
 end menu_DisplayThisBranchFile
 
-on menu_DisplayOtherBranchFile arrayView  
+on menu_DisplayOtherBranchFile arrayView
    put _getFile (arrayView) into theirFile
-  
+
    put LocalArray ["otherBranchName"] into otherBranchName
    put "master" into otherBranchName
-   
+
    git_ExportFileFromBranch theirFile, otherBranchName
    put the result into exportedFile
    return exportedFile
@@ -78,12 +78,12 @@ command git_ExportFileFromBranch someFile, branchName, pToFile
    git show branch:file
    -- http://stackoverflow.com/questions/7856416/view-a-file-in-a-different-git-branch-without-changing-branches
    */
-   
+
    set the itemdelimiter to slash
    put item -1 of someFile into shortFile
    put someFile into someFolder
    put empty into item -1 of someFolder
-   
+
    if pToFile is empty then
       set the itemdelimiter to "/"
       put the tempName & "/" into tempFolder
@@ -94,7 +94,7 @@ command git_ExportFileFromBranch someFile, branchName, pToFile
    shell_BashParamEscape shortFile
    put "git show" && shortFile & ":" & branchName into someShell
    -- put space & ">" && kwote (pToFile) after someShell
-   
+
    put git_ExecuteShellCommand (someShell, someFolder) into shellResult
    if shellResult is not empty then
       put someShell
@@ -108,12 +108,12 @@ end _
 
 on menu_KeepOurs
    -- http://stackoverflow.com/questions/9823692/resolving-a-both-added-merge-conflict-in-git
-   
+
 end menu_KeepOurs
 
 on menu_KeepTheirs
    -- http://stackoverflow.com/questions/9823692/resolving-a-both-added-merge-conflict-in-git
-   
+
 end menu_KeepTheirs
 
 on _

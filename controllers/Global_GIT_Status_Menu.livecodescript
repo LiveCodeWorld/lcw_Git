@@ -32,19 +32,19 @@ end refreshGitStatus
 
 --> Global | GIT | Status | Menu
 -
-on submenu_Branch
-   return "Global | GIT | Branch | Menu"
-end submenu_Branch
-
 on menu_refreshGitStatus
    stack_SaveEdited "all"
    refreshGitStatus
 end menu_refreshGitStatus
 
-on menu_DisplayStatusReport arrayView
+on menu_DisplayFullStatusReport arrayView
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
    git_DisplayStatusLines gitCheckoutFolder
-end menu_DisplayStatusReport
+end menu_DisplayFullStatusReport
+
+on submenu_Branch
+   return "Global | GIT | Branch | Menu"
+end submenu_Branch
 
 on _
 end _
