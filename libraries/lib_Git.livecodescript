@@ -229,7 +229,7 @@ function git_GetFileLog someFile, pCommitHash, pLogFormat, pHowMany, pAllBranche
    put empty into item -1 of someFolder
    
    put "git log --follow" into someShell
-   if pAllBranches is not false then put space & "--all" after someShell
+   if pAllBranches is true then put space & "--all" after someShell
    if pLogFormat is empty then put "oneline" into pLogFormat
    put space & "--pretty=" & pLogFormat after someShell
    if pHowMany is not empty then put space & "-n" & pHowMany after someShell
