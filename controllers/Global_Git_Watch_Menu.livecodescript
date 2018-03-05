@@ -24,7 +24,7 @@ on menu_CutMenu mTarget, scriptMenuTitle
    get "Are you sure you want to cut the menu suites from this script? The suites will be places onto the clipboard, and you can undo the action using the undo button of the Script Editor?"
    opn_Answer it
    
-   put rev_ScriptObject() into mController
+   put scriptEditor_Object() into mController
    put the script of mController into someScript
    
    menu_DeleteTitleSuites scriptMenuTitle, someScript
@@ -32,7 +32,7 @@ on menu_CutMenu mTarget, scriptMenuTitle
    set the clipboarddata to menuScriptSuites
    
    rev_SetScriptEditorField someScript
-   opn_Notify "Copied menu script suites for" && kwote (scriptMenuTitle) && "to clipboard!", true
+   lcw_Notify "Copied menu script suites for" && kwote (scriptMenuTitle) && "to clipboard!", true
    return menuScriptSuites
 end menu_CutMenu
 
@@ -158,7 +158,7 @@ on menu_AddFileToGit scriptObject
    
    put the mobile_Name of scriptObject into paramArray ["mobileObject"]
    put "Added script file for [[mobileObject]] to GIT!" into someText
-   opn_Notify someText, false, paramArray
+   lcw_Notify someText, false, paramArray
 end menu_AddFileToGit
 
 on menu_CommitScript mTarget   

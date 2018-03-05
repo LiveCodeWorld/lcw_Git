@@ -11,7 +11,7 @@ version: 0.1
 -
 on menu_ConfigureGitLogin
    put user_GetLogin() into userName
-   put opn_Ask("GIT user name...", userName) into userName
+   put lcw_Ask("GIT user name...", userName) into userName
    put "git config --global user.name" && kwote(userName) into someShell
    put git_ExecuteShellCommand(someShell) into shellResult
    display_Text shellResult, "git config --list"
@@ -19,7 +19,7 @@ end menu_ConfigureGitLogin
 
 on menu_ConfigureGitEmail
    put user_GetEmail() into userEmail
-   put opn_Ask("GIT user email...", userEmail) into userEmail
+   put lcw_Ask("GIT user email...", userEmail) into userEmail
    put "git config --global user.email" && kwote(userEmail) into someShell
    put git_ExecuteShellCommand(someShell) into shellResult
    display_Text shellResult, "git config --list"
@@ -27,7 +27,7 @@ end menu_ConfigureGitEmail
 
 on menu_IgnoreWhiteSpace
    get git_ExecuteShellCommand("git config --global apply.whitespace nowarn")
-   if it is not empty then opn_Notify it, true
+   if it is not empty then lcw_Notify it, true
    put git_ExecuteShellCommand("git config --list") into shellResult
    display_Text shellResult, "git config --list"
 end menu_IgnoreWhiteSpace
@@ -107,7 +107,7 @@ on menu_TestIgnoreFile mTarget, menuChoice
    
    put url ("binfile:" & ignoreFile) into ignoreText
    put text_LineEndingPlatform (ignoreText) into somePlatform
-   opn_Notify somePlatform, true
+   lcw_Notify somePlatform, true
 end menu_TestIgnoreFile
 
 on menu_FixGitIgnoreFile

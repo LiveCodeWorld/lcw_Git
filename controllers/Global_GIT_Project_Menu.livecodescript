@@ -78,7 +78,7 @@ command git_AddAndSetGitFolder pGitFolder
    
    git_AddRootFolderToIndex pGitFolder
    if the result is not empty then
-      opn_Notify the result, true
+      lcw_Notify the result, true
       exit to top
    end if
    

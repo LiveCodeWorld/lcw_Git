@@ -190,11 +190,11 @@ on menu_CreateAndCheckoutNewBranch
    */
    
    put _askForBranchName() into branchName
-   breakpoint
    
-   put "checkout -b" && branchName into someShell
+   put "git checkout -b" && branchName into someShell
    put _executeGit (someShell)  into shellResult
    
+   _refreshGitStatus
    lcw_Notify shellResult, true
 end menu_CreateAndCheckoutNewBranch
 

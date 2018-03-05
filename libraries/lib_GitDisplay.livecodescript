@@ -63,7 +63,7 @@ on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
          finder_Reveal fileOrFolder
          break
       case there is a file fileOrFolder
-         launch_Atom fileOrFolder
+         atom_DisplayFile fileOrFolder 
          break
    end switch
 end mDoubleUp_DisplayGitFile
@@ -96,7 +96,7 @@ command git_DisplayTempStackRevision someObject, commitHash
       put empty into item -1 of toFolder
       finder_Reveal toFolder
       
-      launch_Atom toFile
+      atom_DisplayFile toFile
       exit to top
    end if
    
@@ -119,7 +119,7 @@ command git_DisplayTempStackRevision someObject, commitHash
       breakpoint
       put there is a file toFile into fileExists
       get url ("binfile:" & toFile)
-      launch_Atom toFile
+      atom_DisplayFile toFile
       exit to top
    end try
    

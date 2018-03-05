@@ -13,13 +13,26 @@ A library for interfacing with GitHub gists.
 
 --> GitHub | Gist
 -
-command gist_Launch which
+command gist_Launch shortGistFile
    switch which
       case "API"
          launch url "https://developer.github.com/v3/gists/"
          break
-      default
+      case "opn"
          launch url "https://gist.github.com/opn"
+         break
+      default
+         local gistListArray, gistID
+         gist_SearchListArray shortGistFile, gistListArray, gistID
+         put the result into gistFileInfoArray
+         put gistFileInfoArray ["html_url"] into gistHtmlUrl
+         if gistHtmlUrl is empty then
+            launch url "https://gist.github.com/opn"
+            return empty
+         else
+            launch url gistHtmlUrl
+            return gistHtmlUrl
+         end if
    end switch
 end gist_Launch
 
@@ -45,10 +58,9 @@ command gist_SaveHkey hKeys, @pShortGistFile, pGistHelp, pIsPublic
    return gistReplyArray
 end gist_SaveHkey
 
-command gist_SaveObjectScript @scriptObject, pGistHelp, pIsPublic, pGistListArray
+command gist_SaveObjectScript scriptObject, pGistHelp, pIsPublic, pGistListArray
    if exists (scriptObject) is false then return ("error, object" && scriptObject && "does not exist!")
-   put the mobile_Name of scriptObject into scriptObject
-   
+      
    if pGistHelp is empty then
       put _FetchAndAskForScriptHelp (scriptObject) into pGistHelp
    end if
@@ -170,10 +182,54 @@ function gist_List
    return gistList
 end gist_List
 
+function gist_IDFromHkey hKey, pGistListArray
+   -- handler:  function fedwiki_ItemChecked
+   put gist_ShortFileFromHkey (hKey) into shortGistFile
+   put gist_FindInListArray (shortGistFile, pGistListArray) into gistID
+   return gistID
+end gist_IDFromHkey
+
 function gist_FindInListArray shortGistFile, pGistListArray
    gist_SearchListArray shortGistFile, pGistListArray, gistID
    return gistID
 end gist_FindInListArray
+
+function gist_UrlFromHkey hKey, pGistListArray
+   put gist_ShortFileFromHkey (hKey) into shortGistFile
+   gist_SearchListArray shortGistFile, pGistListArray, gistID
+   put the result into gistFileInfoArray
+   
+   gist_DeconstructFileInfoArray gistFileInfoArray, shortGistFile, gistContent, gistDescription, htmlURL, gitPulllURL
+   -- put "https://gist.github.com/opn/" & gistID into gistURL
+   return htmlURL
+end gist_UrlFromHkey
+
+function gist_FetchContent gistID
+   put gist_FetchArray (gistID) into gistFileArray
+   put gist_ExtractContent (gistFileArray) into gistContent
+   return gistContent
+end gist_FetchContent
+
+function gist_ExtractContent gistFileArray, pShortGistFile
+   gist_DeconstructFileInfoArray gistFileArray, pShortGistFile, gistContent, gistDescription, htmlURL, gitPulllURL
+   return gistContent
+end gist_ExtractContent
+
+command gist_DeconstructFileInfoArray gistFileInfoArray, @pShortGistFile, @gistContent, @gistDescription, @htmlURL, @gitPulllURL
+   if pShortGistFile is empty then
+      put gistFileInfoArray ["files"] into fileSectionArray
+      put line 1 of keys (fileSectionArray) into pShortGistFile
+   end if
+   put gistFileInfoArray ["files"] into gistFileArray
+   put gistFileArray [pShortGistFile]["content"] into gistContent
+   
+   put gistFileInfoArray ["description"] into gistDescription
+   put gistFileInfoArray ["html_url"] into htmlURL
+   put gistFileInfoArray ["git_pull_url"] into gitPulllURL
+   
+   -- put gistFileInfoArray ["owner"] into gistOwnerArray
+   return gistFileArray
+end gist_DeconstructFileInfoArray
 
 command gist_SearchListArray shortGistFile, @gistListArray, @gistID
    put empty into gistID
@@ -181,12 +237,12 @@ command gist_SearchListArray shortGistFile, @gistListArray, @gistID
       put gist_FetchListArray() into gistListArray
    end if
    repeat for each key indexNum in gistListArray
-      put gistListArray [indexNum]["files"] into gistFileArray
+      put gistListArray [indexNum] into gistFileInfoArray
+      put gistFileInfoArray ["files"] into gistFileArray
       put keys (gistFileArray) into gistFiles
       if shortGistFile is among the lines of gistFiles then
-         put gistListArray [indexNum]["id"] into gistID
-         gist_DeconstructFileArray gistFileArray, shortGistFile, gistContent, gistDescription, htmlURL, gitPulllURL
-         return gistListArray
+         put gistFileInfoArray ["id"] into gistID
+         return gistFileInfoArray
       end if
    end repeat
    return gistListArray
@@ -202,6 +258,12 @@ function gist_ParseListArray gistListArray
    delete char -1 of gistList
    return gistList
 end gist_ParseListArray
+
+function gist_FetchArray gistID
+   put gist_FetchJson (gistID) into someJSON
+   put json_ToArray (someJSON) into someArray
+   return someArray
+end gist_FetchArray
 
 function gist_FetchListArray pNextURL
    -- put  "/users/:username/gists"
@@ -230,40 +292,8 @@ function gist_FetchListJson pNextURL
 end gist_FetchListJson
 
 
---> Gist | Content
+--> Gist | Edit
 -
-function gist_FetchContent gistID
-   put gist_FetchArray (gistID) into gistFileArray
-   put gist_ExtractContent (gistFileArray) into gistContent
-   return gistContent
-end gist_FetchContent
-
-function gist_ExtractContent gistFileArray, pShortGistFile
-   gist_DeconstructFileArray gistFileArray, pShortGistFile, gistContent, gistDescription, htmlURL, gitPulllURL
-   return gistContent
-end gist_ExtractContent
-
-command gist_DeconstructFileArray gistFileArray, @pShortGistFile, @gistContent, @gistDescription, @htmlURL, @gitPulllURL
-   if pShortGistFile is empty then
-      put gistFileArray ["files"] into fileSectionArray
-      put line 1 of keys (fileSectionArray) into pShortGistFile
-   end if
-   put gistFileArray ["files"][pShortGistFile]["content"] into gistContent
-   
-   put gistFileArray ["description"] into gistDescription
-   put gistFileArray ["html_url"] into htmlURL
-   put gistFileArray ["git_pull_url"] into gitPulllURL
-   
-   put gistFileArray ["html_url"] into gistHistoryArray
-   return gistHistoryArray
-end gist_DeconstructFileArray
-
-function gist_FetchArray gistID
-   put gist_FetchJson (gistID) into someJSON
-   put json_ToArray (someJSON) into someArray
-   return someArray
-end gist_FetchArray
-
 command gist_Edit gistID, shortGistFile, pSomeText, pDescription, pIsPublic
    -- PATCH /gists/:id
    -- but you can use a POST
@@ -394,8 +424,8 @@ private function _FetchAndAskForScriptHelp scriptObject
 end _FetchAndAskForScriptHelp
 
 private function _FetchAndAskForHkeyHelp hKey
-   -- put hkey_FetchHelp (hKey) into pDescription -- this is the project specific help.
-   put library_FetchHandlerHelp (hkey) into pDescription
+   put hkey_FetchHelp (hKey) into pDescription -- this is the project specific help.
+   -- put library_FetchHandlerHelp (hkey) into pDescription
    _tidyGistHelp pDescription
    put merge ("Give a description for handler '[[item 1 to 2 of hKey]]'...") into someQuestion
    -- replace "'" with quote in someQuestion

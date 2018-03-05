@@ -9,33 +9,30 @@ version: 0.1
 
 --> Global | Git | Pull | Menu
 -
-on menu_CloseAndReloadPulledStacks mTarget
-   put the view_Text of mTarget into pullResult
-   put git_ParsePullResult (pullResult) into changedFiles
-   display_Outline changedFiles, "git pull result", "Global | Git | Pull | Menu", "Global | Git | Pull | Line | Menu"
-end menu_CloseAndReloadPulledStacks
+on menu_RevealProjectFolder indexView
+   put the displayed_GitCheckoutFolder of indexView into gitFolder
+   --  put the displayed_GitBranch of indexView into currentBranchName
+   finder_Reveal gitFolder
+end menu_RevealProjectFolder
 
 on _
 end _
 
-on submenu_Development
-   return "Git | Pull | Deps | Menu"
-end submenu_Development
+on submenu_Dev
+   return "Dev | Menu"
+end submenu_Dev
 
 
---> Git | Pull | Deps | Menu
+--> Dev | Menu
 -
-on menu_SetTreeFieldTitle treeView
-   put the tree_Field of treeView into treeField
-   set the menu_Title of treeField to "Global | Tree | Menu"
-   put the menu_Title of treeField
-end menu_SetTreeFieldTitle
-
-on menu_DisplayTitles treeView
-   display_MenuTitles
-   put the tree_Field of treeView into treeField
-   display_MenuTitles treeField
-end menu_DisplayTitles
+on menu_ParsePullResult mTarget
+   put the view_Text of mTarget into pullResult
+   put git_ParsePullResult (pullResult) into changedFiles
+   display_Lines changedFiles, "git pull result"
+   put the result into indexView
+   set the title_Menu of indexView to "Global | Git | Pull | Menu"
+   set the line_Menu of indexView to "Global | Git | Pull | Line | Menu"
+end menu_ParsePullResult
 
 
 --> Menu | Props

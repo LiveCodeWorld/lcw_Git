@@ -66,6 +66,10 @@ on menu_refreshGitStatus
    refreshGitStatus
 end menu_refreshGitStatus
 
+on menu_RevertProjectStacks
+   
+end menu_RevertProjectStacks
+
 on menu_DisplayStatusReport arrayView
    put LocalArray ["gitFolder"] into gitFolder
    git_DisplayStatusLines gitFolder
@@ -120,16 +124,15 @@ end menu_AddChangesToStage
 on _
 end _
 
-on menu_PushCurrentBranch
-   breakpoint
-   
+on menu_PushCurrentBranch arrayView
    -- TO push THE new BRANCH TO A REMOTE REPOSITORY
    
    set the cursor to watch
-   put git_CurrentBranchName() into currentBranchName
-   put "git push origin" && kwote(currentBranchName) into someShell
+   put the displayed_GitCheckoutFolder of arrayView into gitFolder
+   put git_CurrentBranchName (gitFolder) into currentBranchName
+   put "git push origin" && kwote (currentBranchName) into someShell
    
-   put git_ExecuteShellCommand(someShell) into shellResult
+   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
    
    switch
       case shellResult begins with "Broken pipe"
@@ -149,8 +152,8 @@ on menu_PushCurrentBranch
          end if
          break
       default
-         lcw_Notify shellResult, true
-         display_GitStatus
+         lcw_Notify shellResult
+         refreshGitStatus
    end switch
 end menu_PushCurrentBranch
 
@@ -159,20 +162,36 @@ on menu_Pull
    -- put merge("git pull origin [[remoteBranch]]:[[newLocalBranch]]") into someShell
    -- put "git pull" into someShell
    -- put "git pull origin master" into someShell
-   put git_CurrentBranchName() into currentBranchName
-   put "git pull origin" && kwote(currentBranchName) into someShell
    
-   put git_ExecuteShellCommand(someShell) into shellResult
+   put LocalArray ["gitFolder"] into gitFolder
+   
+   put git_CurrentBranchName (gitFolder) into currentBranchName
+   put "git pull origin" && kwote (currentBranchName) into someShell
+   
+   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
    display_Lines shellResult, someShell
+   put the result into indexView
+   set the title_Menu of indexView to "Global | Git | Pull | Menu"
+   set the line_Menu of indexView to "Global | Git | Pull | Line | Menu"
+   -- set the displayed_ScriptObject of indexView to empty
+   set the displayed_GitCheckoutFolder of indexView to gitFolder
+   set the displayed_GitBranch of indexView to currentBranchName
    
+   refreshGitStatus
+   
+   /*
    stack_RevertLoaded
-   
    put the result into displayView
    set the menu_Title of displayView to "Global | Git | Pull | Menu"
+   */
 end menu_Pull
 
 on _
 end _
+
+on submenu_Tag
+   return "Global | GIT | Tag | Menu"
+end submenu_Tag
 
 on submenu_Stash
    return "Global | GIT | Stash | Menu"

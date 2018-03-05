@@ -30,6 +30,54 @@ command github_SetApiToken gitHubApiToken
 end github_SetApiToken
 
 
+--> GitHub | Wiki
+-
+getprop github_WikiPage
+   put the stack_Object of the target into stackObject
+   put github_CreateStackWikiPage (stackObject) into mdLines
+   return mdLines
+end github_WikiPage
+
+function github_CreateStackWikiPage stackObject
+   /*
+   You can find the latest version of the script [here](../blob/master/[[relativePath]]).
+   
+   [[scriptHelp]]
+   
+   ## Handlers
+   
+   [[handlerList]]
+   */
+   put script_GetCommentAboveMe() into mkTemplate
+   
+   put the script_MetaData of stackObject into scriptMetaData
+   put scriptMetaData ["script_Help"] into scriptHelp
+   put the project_Folder of stackObject into projectFolder
+   put the effective filename of stackObject into stackPath
+   put stackPath into relativePath
+   replace projectFolder with empty in relativePath
+   put script_GetHandlerMarkdown (stackObject, relativePath) into handlerList
+   
+   put merge (mkTemplate) into wikiMarkdown
+   return wikiMarkdown
+end github_CreateStackWikiPage
+
+function script_GetHandlerMarkdown tObject, relativePath
+   put the revAvailableHandlers of tObject into handlerTable
+   sort numeric handlerTable by word 3 of each
+   repeat for each line someLine in handlerTable
+      --    - [G mobile_VerticalScroller](../blob/master/libraries/lib_MobileControls.livecodescript#L35-L42)
+      -- put word 1 of someLine into item 2 of shortHkey
+      -- put word 2 of someLine into item 1 of shortHkey
+      put word 3 of someLine +1 into startLineNum
+      put word 4 of someLine +1 into endLineNum
+      put "- [" & word 1 to 2 of someLine & "](../blob/master/" & relativePath & "#L" & startLineNum & "-L" & endLineNum & ")" & CR after mdLines
+   end repeat
+   delete char -1 of mdLines
+   return mdLines
+end script_GetHandlerMarkdown
+
+
 --> GitHub | Issues
 -
 command github_CreateIssue repoOwner, someRepo, postJSON

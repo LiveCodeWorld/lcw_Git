@@ -14,7 +14,7 @@ version: 0.2
 local LocalArray
 
 on menu_Init targetObject, mPath, mTitlePath
-   put rev_ScriptObject() into scriptObject
+   put scriptEditor_Object() into scriptObject
    
    put scriptObject into LocalArray ["scriptObject"]
    put the script_File of scriptObject into LocalArray ["scriptFile"]
@@ -73,7 +73,7 @@ on menu_RevertToLastRevision scriptObject
    -- display_Lines previousScript
    put the mobile_Name of scriptObject into mObject
    put "Copied previous script to the script editor of" && mObject & ". Apply changes to save them!" into someComment
-   opn_Notify mObject, true
+   lcw_Notify mObject, true
 end menu_RevertToLastRevision
 
 on menu_DisplayScriptLog scriptObject
@@ -161,7 +161,7 @@ on menu_DisplayRevision treeField
          unlock messages
          wait for messages
          go to stack someData
-         if the result is not empty then opn_Notify the result, true
+         if the result is not empty then lcw_Notify the result, true
          break
       default
          put the stack_object of treeField into displayStack
@@ -239,7 +239,7 @@ on menu_AmmendCommitMessage
    
    put "git commit --amend" into someShell
    put empty into oldMessage
-   put opn_Ask ("Change commit message...", oldMessage) into newMessage
+   put lcw_Ask ("Change commit message...", oldMessage) into newMessage
    put space & "-m" && kwote(newMessage) after someShell
    put git_ExecuteShellCommand (someShell)
 end menu_AmmendCommitMessage

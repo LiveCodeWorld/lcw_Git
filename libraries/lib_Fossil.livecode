@@ -1436,7 +1436,7 @@ end fossil_SetDefaultRemoteUrl
 -
 function fossil_FetchAndCheckProjectDataArray
    put fossil_ConstructLiveProjectData() into liveProjectData
-   put library_FetchArray ("Fossil") into storedFossilData
+   put lcw_FetchArray ("Fossil.array") into storedFossilData
    
    repeat for each key liveIndexNum in liveProjectData
       put liveProjectData [liveIndexNum] into liveProjectArray
@@ -1538,54 +1538,54 @@ Here we save the project-folder, project-id, server-id, admin-user )and initial 
 
 -- command fossil_AddProjectArray fossilFile, projectArray
    -- creates a union with stored project array, then saves to disk
-   put library_FetchArray ("Fossil") into fossilArray
+   put lcw_FetchArray ("Fossil.array") into fossilArray
    put fossilArray [fossilFile] into oldProjectArray
    union oldProjectArray with projectArray
    put oldProjectArray into fossilArray [fossilFile]
-   library_StoreArray "Fossil", fossilArray
+   lcw_StoreArray "Fossil.array", fossilArray
 end fossil_AddProjectArray
 
 function fossil_ConstructStoredPathArray
-   put library_FetchArray ("Fossil") into fossilArray
+   put lcw_FetchArray ("Fossil.array") into fossilArray
    return constructPathArray (fossilArray)
 end fossil_ConstructStoredPathArray
 
 function fossil_FetchProjectData
-   put library_FetchArray ("Fossil") into fossilData
+   put lcw_FetchArray ("Fossil.array") into fossilData
    return fossilData
 end fossil_FetchProjectData
 
 command fossil_StoreProjectData fossilData
-   library_StoreArray "Fossil", fossilData
+   lcw_StoreArray "Fossil.array", fossilData
 end fossil_StoreProjectData
 
 command fossil_DeleteProjectData
-   library_StoreArray "Fossil", fossilData
+   lcw_StoreArray "Fossil.array", fossilData
 end fossil_DeleteProjectData
 
 function fossil_FetchProjectArray fossilFile
-   put library_FetchArray ("Fossil") into fossilArray
+   put lcw_FetchArray ("Fossil.array") into fossilArray
    return fossilArray [fossilFile]
 end fossil_FetchProjectArray
 
 command fossil_SaveProjectArray fossilFile, projectArray
-   put library_FetchArray ("Fossil") into fossilArray
+   put lcw_FetchArray ("Fossil.array") into fossilArray
    if projectArray is an array then
       put projectArray into fossilArray [fossilFile]
    else
       delete variable fossilArray [fossilFile]
    end if
-   library_StoreArray "Fossil", fossilArray
+   lcw_StoreArray "Fossil.array", fossilArray
    return fossilArray
 end fossil_SaveProjectArray
 
 command fossil_DeleteProjectArray fossilFile
-   put library_FetchArray ("Fossil") into fossilArray
+   put lcw_FetchArray ("Fossil.array") into fossilArray
    delete variable fossilArray [fossilFile]
    if fossilArray is not an array then
       delete variable fossilArray
    end if
-   library_StoreArray "Fossil", fossilArray
+   lcw_StoreArray "Fossil.array", fossilArray
    return fossilArray
 end fossil_DeleteProjectArray
    

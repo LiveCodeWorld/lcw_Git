@@ -80,7 +80,7 @@ end menu_CommitFile
 
 on menu_RemoveFile someFile, someBoolean
    git_DeleteFile someFile, someBoolean
-   opn_Notify the result
+   lcw_Notify the result
    git_RefreshDisplay "Git Status"
 end menu_RemoveFile
 

@@ -64,23 +64,49 @@ end submenu_Branch
 
 
 
+command git_CheckoutOurs someFile
+   put "git checkout --theirs -- [[shortFile]]" into shellTemplate
+   git_ExecuteMergedShell shellTemplate, someFile
+   put the result into gitResult
+   return gitResult
+end git_CheckoutOurs
+
+command git_CheckoutTheirs someFile
+   put "git checkout --ours -- [[shortFile]]" into shellTemplate
+   git_ExecuteMergedShell shellTemplate, someFile
+   put the result into gitResult
+   return gitResult
+end git_CheckoutTheirs
+
+
 --> Global | GIT | Unmerged paths | Both modified | File | Menu
 -
-on menu_CheckoutOurs arrayView
-   put "git checkout --ours -- [[shortFile]]" into shellTemplate
+on menu_AddOursToStage arrayView
    put _getFile (arrayView) into someFile
-   git_ExecuteMergedShell shellTemplate, someFile
-   put the result into mergeResult
-   if mergeResult is not empty then
-      display_Lines mergeResult, shellTemplate
-   end if
+   
+   git_AddFile someFile
+   put the result into gitResult
+   
+   -- git_CheckoutOurs someFile
+   --  put the result into gitResult
+   
+   if gitResult is not empty then display_Lines gitResult, shellTemplate
+   refresh
+end menu_AddOursToStage
+
+on menu_CheckoutOurs arrayView
+   put _getFile (arrayView) into someFile
+   git_CheckoutOurs someFile
+   put the result into gitResult
+   
+   if gitResult is not empty then display_Lines gitResult, shellTemplate
    refresh
 end menu_CheckoutOurs
 
 on menu_CheckoutTheirs arrayView
-   put "git checkout --theirs -- [[shortFile]]" into shellTemplate
    put _getFile (arrayView) into someFile
-   git_ExecuteMergedShell shellTemplate, someFile
+   
+   git_CheckoutTheirs someFile
    put the result into mergeResult
    display_Lines mergeResult, shellTemplate
    refresh
@@ -99,6 +125,24 @@ end _
 on insert_Edit
    return "Edit | Menu"
 end insert_Edit
+
+
+--> Global | GIT | Unmerged paths | Added by them | File | Menu
+-
+on menu_AddFileToStage arrayView
+   put _getFile (arrayView) into someFile
+   git_AddFile someFile
+   put the result into addResult
+   refresh
+end menu_AddFileToStage
+
+on menu_RemoveFileFromStage arrayView
+   put _getFile (arrayView) into someFile
+   git_RemoveFile someFile
+   put the result into removeResult
+   refresh
+end menu_RemoveFileFromStage
+
 
 
 --> Global | GIT | Unmerged Paths | Added By Us | File | Menu
@@ -124,6 +168,7 @@ end _
 on menu_AddFileToStage arrayView
    put _getFile (arrayView) into someFile
    git_AddFile someFile
+   put the result into addResult
    refresh
 end menu_AddFileToStage
 
@@ -146,12 +191,21 @@ on menu_About
    answer "Both deleted means..."
 end menu_About
 
+on menu_AddFileToStage arrayView
+   put _getFile (arrayView) into someFile
+   git_AddFile someFile
+   refresh
+end menu_AddFileToStage
+
+on menu_RemoveFileFromStage arrayView
+   put _getFile (arrayView) into someFile
+   git_RemoveFile someFile
+   put the result into removeResult
+   refresh
+end menu_RemoveFileFromStage
+
 on _
 end _
-
--- on menu_AddFileToStage arrayView
-   -- use handler above
-end menu_AddFileToStage
 
 on insert_BothDeleted
    return "Edit | Menu"
@@ -167,22 +221,45 @@ end insert_ChangesNotStaged
 
 --> Global | GIT | Changes not staged for commit | Menu
 -
-on menu_StageThenCommit arrayView
+on menu_CommitAllStaged arrayView
    put lcw_Ask ("Comment on this change...") into someComment
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
    
-   put true into addIfNew -- not needed for this menu
-   put true into viewDiff -- for more info
-   git_CommitChanges someComment, gitCheckoutFolder, addIfNew, viewDiff
+   git_CommitChanges someComment, gitCheckoutFolder
    put the result into shellResult
    
    display_Lines shellResult, "git_CommitChanges"
    refresh
-end menu_StageThenCommit
+end menu_CommitAllStaged
 
 
 --> Global | GIT | Changes not staged for commit | Modified | File | Menu
 -
+on menu_ReloadStack arrayView
+   -- we are not (yet) checking for backscript and frontscript use
+   put _getFile (arrayView) into someFile
+   put the short name of stack someFile into stackName
+   put stackName is among the lines of thestacksinuse into isUsed
+   revert stack stackName
+   if isUsed is true then start using stack stackName
+end menu_ReloadStack
+
+getprop disabled_ReloadStack [arrayView]
+   put _getFile (arrayView) into someFile
+   if exists (stack someFile) then
+      put stack_ListEditedNames() into editedStacks
+      put the short name of stack someFile into stackName
+      if stackName is among the lines of editedStacks then
+         -- let's not reload stacks that need saving first
+         return true
+      else
+         return false
+      end if
+   else
+      return true
+   end if
+end disabled_ReloadStack
+
 on menu_AddFile arrayView
    put _getFile (arrayView) into someFile
    git_AddFile someFile
@@ -212,12 +289,28 @@ on menu_CommitFile arrayView
    refresh
 end menu_CommitFile
 
+on _
+end _
+
+on menu_RevealInFinder arrayView
+   put _getFile (arrayView) into someFile
+   finder_Reveal someFile
+end menu_RevealInFinder
+
 
 --> Global | GIT | Changes to be committed | Modified | File | Menu
 -
 on menu_CommitFile arrayView
    -- do above
 end menu_CommitFile
+
+on _
+end _
+
+on menu_RevealInFinder arrayView
+   put _getFile (arrayView) into someFile
+   finder_Reveal someFile
+end menu_RevealInFinder
 
 
 --> Global | GIT | Changes to be committed | Menu
@@ -226,9 +319,7 @@ on menu_CommitChanges arrayView
    put lcw_Ask ("Comment on this change...") into someComment
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
    
-   put false into addIfNew -- not needed for this menu
-   put true into viewDiff -- for more info
-   git_CommitChanges someComment, gitCheckoutFolder, addIfNew, viewDiff
+   git_CommitChanges someComment, gitCheckoutFolder
    put the result into shellResult
    
    display_Lines shellResult, "git_CommitChanges"
@@ -258,6 +349,25 @@ on menu_AddUntrackedFile arrayView
    refresh
 end menu_AddUntrackedFile
 
+on _
+end _
+
+on menu_EditScript arrayView
+   put _getFile (arrayView) into someFile
+   edit the script of stack someFile
+end menu_EditScript
+
+
+--> Global | GIT | Untracked files | Files | File | Menu | Disabled
+-
+getprop disabled_EditScript [arrayView]
+   put _getFile (arrayView) into someFile
+   if exists (stack someFile) then
+      return false
+   else
+      return true
+   end if
+end disabled_EditScript
 
 --> Global | GIT | Line | File | Menu
 -
@@ -265,9 +375,7 @@ on menu_StageThenCommit arrayView
    put lcw_Ask ("Comment on this change...") into someComment
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
    
-   put true into addIfNew
-   put true into viewDiff -- for more info
-   git_CommitChanges someComment, gitCheckoutFolder, addIfNew, viewDiff
+   git_CommitChanges someComment, gitCheckoutFolder
    put the result into shellResult
    
    display_Lines shellResult, "git_CommitChanges"
@@ -437,7 +545,7 @@ end menu_GoToStack
 
 on menu_EditFile arrayView
    put _getFile (arrayView) into someFile
-   launch_Atom someFile
+   atom_DisplayFile someFile
 end menu_EditFile
 
 

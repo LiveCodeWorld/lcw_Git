@@ -11,7 +11,32 @@ version: 0.1
 local LocalArray
 
 
---> Global | GIT | Unmerged paths | Menu
+--> Global | GIT | Unmerged paths | Deleted by us | File | Menu
+-
+on menu_RemoveOurFile arrayView
+   put "git rm -- [[shortFile]]" into shellTemplate
+   put _getFile (arrayView) into someFile
+   git_ExecuteMergedShell shellTemplate, someFile
+   put the result into mergeResult
+   if mergeResult is not empty then
+      display_Lines mergeResult, shellTemplate
+   end if
+   refresh
+end menu_RemoveOurFile
+
+-- on menu_CheckoutOurs arrayView
+put "git checkout --ours -- [[shortFile]]" into shellTemplate
+put _getFile (arrayView) into someFile
+git_ExecuteMergedShell shellTemplate, someFile
+put the result into mergeResult
+if mergeResult is not empty then
+   display_Lines mergeResult, shellTemplate
+end if
+refresh
+end menu_CheckoutOurs
+
+
+--> Global | GIT | Unmerged Paths | Menu
 -
 on menu_Documentation arrayView, whichDoc
    switch whichDoc
@@ -57,7 +82,7 @@ on menu_DisplayThisBranchFile arrayView
          end if
          break
       default
-         launch_Atom ourFile
+         atom_DisplayFile ourFile
    end switch
    go to stack ourFile
 end menu_DisplayThisBranchFile
@@ -133,6 +158,8 @@ end menu_Documentation
 -
 on menu_Init tObject
    put the array_View of tObject into arrayView
+   put arrayView into LocalArray ["displayView"]
+   
    put the displayed_GitCheckoutFolder of arrayView into LocalArray ["gitCheckoutFolder"]
    put the current_BranchName of arrayView into LocalArray ["currentBranchName"]
    put the other_BranchName of arrayView into LocalArray ["otherBranchName"]

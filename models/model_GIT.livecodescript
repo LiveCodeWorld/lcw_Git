@@ -92,6 +92,18 @@ end git_WithinCheckoutFolder
 
 --> GIT | Model
 -
+function git_GetProjectArray
+   put lcw_FetchArray ("GitProjectArray.array") into gitProjectArray
+   return gitProjectArray
+end git_GetProjectArray
+
+command git_SetProjectArray gitProjectArray
+   lcw_StoreArray "GitProjectArray.array", gitProjectArray
+end git_SetProjectArray
+
+
+--> GIT | Model | Wrappers
+-
 command git_AddRootFolderToIndex gitRootFolder, pProjectName
    put git_GetCheckoutFolder (gitRootFolder) into gitRootFolder
    if gitRootFolder is empty then return "Error:  folder is not within a git repository"
@@ -130,15 +142,6 @@ command git_SetProject projectName
    git_SetRootFolder longGitFolder
    return longGitFolder
 end git_SetProject
-
-function git_GetProjectArray
-   put library_FetchArray ("GitProjectArray") into gitProjectArray
-   return gitProjectArray
-end git_GetProjectArray
-
-command git_SetProjectArray gitProjectArray
-   library_StoreArray "GitProjectArray", gitProjectArray
-end git_SetProjectArray
 
 
 --> Git | Files

@@ -30,6 +30,38 @@ end saveStackRequest
 
 --> Working On
 -
+command git_DeleteFile someFile, pForce
+   /*
+   git rm Documentation/\*.txt
+   Removes all *.txt files from the index that are under the Documentation directory and any of its subdirectories.
+   
+   Note that the asterisk * is quoted from the shell in this example; this lets git, and not the shell, expand the pathnames of files and subdirectories under the Documentation/ directory.
+   
+   git rm -f git-*.sh
+   Because this example lets the shell expand the asterisk (i.e. you are listing the files explicitly), it does not remove subdir/git-foo.sh.
+   */
+   
+   if pForce is true then
+      put "git rm --force [[shortFile]]" into shellTemplate
+   else
+      put "git rm [[shortFile]]" into shellTemplate
+   end if
+   git_ExecuteMergedShell shellTemplate, someFile
+   put the result into shellResult
+   return shellResult
+   
+   if shellResult begins with "fatal: pathspec '" or shellResult begins with "error:" then
+      -- fatal: pathspec 'opn_Plugins/opn_Text/colour/swatch/Beach' did not match any files
+      -- assume it is untracked (could check before) ?
+      if there is a file someFile then
+         delete file someFile
+      end if
+      -- beep
+   end if
+   return shellResult
+end git_DeleteFile
+
+
 --> GIT | List
 -
 function git_HashInfo someHash, gitFolder  
@@ -169,6 +201,12 @@ command git_AddFile someFile
    return the result
 end git_AddFile
 
+command git_RemoveFile someFile
+   put "git rm -- [[shortFile]]" into shellTemplate
+   git_ExecuteMergedShell shellTemplate, someFile
+   return the result
+end git_RemoveFile
+
 command git_ExecuteMergedShell shellTemplate, someFile
    -- replace "{" with "[[" in shellTemplate
    -- replace "}" with "]]" in shellTemplate
@@ -204,17 +242,26 @@ command git_CommitFile someFile, someComment, pVerbose
    return shellResult
 end git_CommitFile
 
-command git_CommitChanges someComment, pGitCheckoutFolder, pAddAll, pViewDiff
-   repository_SetCommitComment someComment
+command git_CommitChanges someComment, gitCheckoutFolder
+   git_Commit someComment, gitCheckoutFolder, true, true
+   return the result   
+end git_CommitChanges
+
+command git_Commit someComment, gitCheckoutFolder, pAddAll, pViewDiff   
+   if someComment is empty then
+      ask "Give a comment to this commit..." with "lcw commit"
+      if it is empty then exit to top
+      put it into someComment
+   end if
    
    put "git commit" into someShell
    if pAddAll is not false then put space & "-a" after someShell
    if pViewDiff is not false then put space & "-v" after someShell
    put space & "-m '" & someComment & "'" after someShell
    
-   put git_ExecuteShellCommand (someShell, pGitCheckoutFolder) into shellResult
+   put git_ExecuteShellCommand (someShell, gitCheckoutFolder) into shellResult
    return shellResult
-end git_CommitChanges
+end git_Commit
 
 
 --> Git | File
@@ -1100,38 +1147,6 @@ end git_Searchlog
 
 --> GIT | Files
 -
-command git_DeleteFile someFile, pForce
-   /*
-   git rm Documentation/\*.txt
-   Removes all *.txt files from the index that are under the Documentation directory and any of its subdirectories.
-   
-   Note that the asterisk * is quoted from the shell in this example; this lets git, and not the shell, expand the pathnames of files and subdirectories under the Documentation/ directory.
-   
-   git rm -f git-*.sh
-   Because this example lets the shell expand the asterisk (i.e. you are listing the files explicitly), it does not remove subdir/git-foo.sh.
-   */
-   
-   put someFile into bashedFile
-   shell_BashParamEscape bashedFile
-   
-   if pForce is true then
-      -- put "git rm --cached" && kwote(mTarget) into someShell
-      put merge("git rm --force [[bashedFile]]") into someShell
-   else
-      put merge("git rm [[bashedFile]]") into someShell
-   end if
-   put git_ExecuteShellCommand(someShell) into shellResult
-   if shellResult begins with "fatal: pathspec '" or shellResult begins with "error:" then
-      -- fatal: pathspec 'opn_Plugins/opn_Text/colour/swatch/Beach' did not match any files
-      -- assume it is untracked (could check before) ?
-      if there is a file someFile then
-         delete file someFile
-      end if
-      -- beep
-   end if
-   return shellResult
-end git_DeleteFile
-
 command git_RenameFile sourceFile, destFile
    -- will do folders as well
    put sourceFile into bashSourceFile

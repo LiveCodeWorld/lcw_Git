@@ -40,7 +40,7 @@ on menu_Search mTarget, menuChoice
    local pTreeMenuTitle, pTreeLineMenuTitle
    
    put the search_Term of me into searchTerm
-   put opn_Ask("Search log for string...", searchTerm) into searchTerm
+   put lcw_Ask("Search log for string...", searchTerm) into searchTerm
    set the search_Term of me to searchTerm
    
    switch menuChoice

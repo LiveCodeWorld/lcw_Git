@@ -9,9 +9,25 @@ version: 0.1
 
 --> Global | Gist | Line | Menu
 -
-on menu_LaunchGist indexView
-   put the clickText
+on menu_LaunchGist indexView   
+   put the clickText into shortGistFile
+   gist_Launch shortGistFile
 end menu_LaunchGist
+
+on menu_DisplayHandlerGist hKey
+   put gist_UrlFromHkey (hKey) into gistURL
+   launch url gistURL
+end menu_DisplayHandlerGist
+
+function gist_UrlFromHkey hKey, pGistListArray
+   put gist_ShortFileFromHkey (hKey) into shortGistFile
+   gist_SearchListArray shortGistFile, pGistListArray, gistID
+   put the result into gistFileInfoArray
+   
+   gist_DeconstructFileInfoArray gistFileInfoArray, shortGistFile, gistContent, gistDescription, htmlURL, gitPulllURL
+   -- put "https://gist.github.com/opn/" & gistID into gistURL
+   return htmlURL
+end gist_UrlFromHkey
 
 on _
 end _

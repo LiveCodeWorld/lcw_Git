@@ -16,8 +16,28 @@ These handlers are not (yet) for use on the server, but in the future they could
 
 --> Currently Working On
 -
-command rig_SaveControllerToLocalProject controllerScript, shortControllerFile
-   
+command rig_LaunchGist shortFile, pGistType
+   if pGistType is empty then
+      set the itemdelimiter to "."
+      switch item -1 of shortFile
+         case "lc"
+            put gist_ShortFileToKey (shortFile, "controller") into shortGistFile
+            break
+         case "livecode"
+         case "livecodescript"
+            put gist_ShortFileToKey (shortFile, "stack") into shortGistFile
+            break
+         default
+            breakpoint
+      end switch
+   end if
+   --
+   gist_Launch shortGistFile
+   return the result
+end rig_LaunchGist
+
+-- command rig_SaveControllerToLocalProject controllerScript, shortControllerFile
+
 end rig_SaveControllerToLocalProject
 
 
@@ -64,11 +84,8 @@ command rig_SaveGistControllers shortServer, mergeHelp
    repeat for each line shortController in shortControllerFiles
       set the cursor to busy
       put rig_FetchController (shortController) into rigScript
-      
-      put gist_ShortFileToKey (shortController, "controller", shortServer) into shortGistFile
-      put merge (mergeHelp) into mergeHelp
-      gist_SaveOrUpdate rigScript, shortGistFile, mergeHelp, false, pGistListArray
-      put the result into someArray
+      rig_SaveControllerAsGist rigScript, shortController, shortServer, mergeHelp, pGistListArray
+      put the result into shortGistFile
       
       lcw_Notify merge ("Saved [[shortGistFile]] as gist.")
       -- display_Array someArray, shortGistFile
@@ -79,6 +96,42 @@ command rig_SaveGistControllers shortServer, mergeHelp
    delete char -1 of markdownSection
    return markdownSection
 end rig_SaveGistControllers
+
+command rig_SaveControllerAsGist rigScript, shortController, shortServer, mergeHelp, pGistListArray, pIsPublic
+   put pIsPublic is not false into pIsPublic
+   put gist_ShortFileToKey (shortController, "controller", shortServer) into shortGistFile
+   put merge (mergeHelp) into mergeHelp
+   gist_SaveOrUpdate rigScript, shortGistFile, mergeHelp, pIsPublic, pGistListArray
+   put the result into someArray
+   return shortGistFile
+end rig_SaveControllerAsGist
+
+command rig_SaveGistStackScript stackName, pMergeHelp, pIsPublic, pGistListArray
+   if exists (stack stackName) is false then return empty
+   
+   put server_GetURL() into shortServer
+   _setScriptStackGistHelp pMergeHelp, shortServer
+   put merge (pMergeHelp) into mergeHelp
+   
+   put the filename of stack stackName into longFile
+   -- put the script of stack stackName into scriptOnlyStackScript
+   put url ("binfile:" & longFile) into scriptOnlyStackScript
+   
+   set the itemdelimiter to slash
+   put item -1 of longFile into shortStack
+   
+   put gist_ShortFileToKey (shortStack, "stack", shortServer) into shortGistFile
+   
+   gist_SaveOrUpdate scriptOnlyStackScript, shortGistFile, mergeHelp, pIsPublic, pGistListArray
+   put the result into gistReplyArray
+   put gistReplyArray ["html_url"] into htmlURL
+   
+   -- notify
+   display_Array gistReplyArray, shortGistFile
+   lcw_Notify merge ("Saved script-only stack [[shortGistFile]] as gist.")
+   
+   return htmlURL
+end rig_SaveGistStackScript
 
 command rig_SaveGistStacks serverStackFiles, pMergeHelp
    put server_GetURL() into shortServer
@@ -93,14 +146,56 @@ command rig_SaveGistStacks serverStackFiles, pMergeHelp
       put merge (pMergeHelp) into mergeHelp
       
       gist_SaveOrUpdate scriptOnlyStackScript, shortGistFile, mergeHelp, false, pGistListArray
-      put the result into someArray
+      put the result into gistReplyArray
+      put gistReplyArray ["html_url"] into htmlURL
       
+      -- notify
+      display_Array gistReplyArray, shortGistFile
       lcw_Notify merge ("Saved script-only stack [[shortGistFile]] as gist.")
-      -- display_Array someArray, shortGistFile
       
-      put "* [[" & shortStack & "]]" & CR after markdownSection
+      -- put "* [[" & shortStack & "]]" & CR after markdownSection
+      put htmlURL & CR after htmlURLs
    end repeat
+   delete char -1 of htmlURLs
    
-   delete char -1 of markdownSection
-   return markdownSection
+   return htmlURLs
 end rig_SaveGistStacks
+
+
+--> Deps
+-
+private function _setControllerHelp mergeHelp, shortServer
+   if mergeHelp is not empty then return mergeHelp
+   switch shortServer
+      case "livecode.world"
+         if mergeHelp is empty then put "[[shortController]] is a revIgniter controller for the www.livecode.world web site." into mergeHelp
+         break
+      case "himalayanacademy.com"
+         if mergeHelp is empty then put "[[shortController]] is a revIgniter controller for the Himalayan Academy web site." into mergeHelp
+         break
+      case "dev.himalayanacademy.com"
+         if mergeHelp is empty then put "[[shortController]] is a revIgniter controller for the Himalayan Academy developer web site." into mergeHelp
+         break
+      default
+         if mergeHelp is empty then put "[[shortController]] is a revIgniter controller." into mergeHelp
+   end switch
+   return mergeHelp
+end _setControllerHelp
+
+private command _setScriptStackGistHelp @mergeHelp, shortServer
+   if mergeHelp is not empty then return mergeHelp
+   switch shortServer
+      case "livecode.world"
+         if mergeHelp is empty then put "[[shortStack]] is a revIgniter script-only stack for the www.livecode.world web site." into mergeHelp
+         break
+      case "himalayanacademy.com"
+         if mergeHelp is empty then put "[[shortStack]] is a revIgniter script-only stack for the Himalayan Academy web site." into mergeHelp
+         break
+      case "dev.himalayanacademy.com"
+         if mergeHelp is empty then put "[[shortStack]] is a revIgniter script-only stack for the Himalayan Academy developer web site." into mergeHelp
+         break
+      default
+         if mergeHelp is empty then put "[[shortStack]] is a revIgniter script-only stack." into mergeHelp
+   end switch
+   return mergeHelp
+end _setScriptStackGistHelp

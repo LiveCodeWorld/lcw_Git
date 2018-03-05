@@ -31,13 +31,13 @@ on menu_RenameFolder
    set the itemdelimiter to "/"
    put item -1 of sourceFolder into shortDestFolder
    
-   put opn_Ask ("Select a new folder name...", shortDestFolder) into shortDestFolder
+   put lcw_Ask ("Select a new folder name...", shortDestFolder) into shortDestFolder
    put sourceFolder into destFolder
    put shortDestFolder into item -1 of destFolder
    
    git_RenameFolder sourceFolder, destFolder
    if the result is not empty then
-      opn_Notify the result, true
+      lcw_Notify the result, true
    else
       git_RefreshDisplay
    end if
@@ -87,7 +87,7 @@ on menu_MoveFile
    
    git_RenameFile someFile, newFile
    if the result is not empty then
-      opn_Notify the result, true
+      lcw_Notify the result, true
    else
       git_RefreshDisplay
    end if
@@ -104,7 +104,7 @@ on menu_RenameFile
    
    git_RenameFile someFile, newFile
    if the result is not empty then
-      opn_Notify the result, true
+      lcw_Notify the result, true
    else
       git_RefreshDisplay
    end if
