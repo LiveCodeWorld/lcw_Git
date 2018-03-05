@@ -66,10 +66,6 @@ on menu_refreshGitStatus
    refreshGitStatus
 end menu_refreshGitStatus
 
-on menu_RevertProjectStacks
-   
-end menu_RevertProjectStacks
-
 on menu_DisplayStatusReport arrayView
    put LocalArray ["gitFolder"] into gitFolder
    git_DisplayStatusLines gitFolder
@@ -84,6 +80,32 @@ on menu_DisplayCommitHistory arrayView
    set the title_Menu of indexView to "Global | Git | Log | Menu"
    set the line_Menu of indexView to "Global | Git | Line | Log | Menu"
 end menu_DisplayCommitHistory
+
+on _
+end _
+
+on menu_ListTrackedFiles
+   -- lists all of the already committed files being tracked by your git repo.
+   -- https://stackoverflow.com/questions/8533202/list-files-in-local-git-repo
+   
+   put LocalArray ["gitFolder"] into gitFolder
+   --
+   put "git ls-tree --full-tree -r HEAD" into someShell
+   -- git_ExecuteShell someShell, gitFolder
+   put shell_ExecuteAtRoot (someShell, gitFolder) into shellResult
+   --
+   display_Index shellResult, "git ls-tree"
+end menu_ListTrackedFiles
+
+on menu_DisplayRemote
+   -- show url of remote branch
+   -- https://stackoverflow.com/questions/8816107/how-can-i-retrieve-the-remote-git-address-of-a-repo
+   put LocalArray ["gitFolder"] into gitFolder
+   
+   put "git remote -v" into someShell
+   -- git_ExecuteShell someShell, gitFolder
+   put shell_ExecuteAtRoot (someShell, gitFolder) -- into shellResult
+end menu_DisplayRemote
 
 on menu_ListCommits
    put LocalArray ["gitFolder"] into gitFolder
