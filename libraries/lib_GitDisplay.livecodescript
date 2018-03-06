@@ -213,7 +213,10 @@ command display_GitFolderStatus gitCheckoutFolder, pArrayView
    return arrayView
 end display_GitFolderStatus
 
-command display_GitStatusTable gitStatusTable, gitCheckoutFolder, pArrayView
+command display_GitStatusTable gitStatusTable, fileOrFolder, pArrayView
+   -- can be called from anywhere inside a git repo
+   put git_GetCheckoutFolder (fileOrFolder) into gitCheckoutFolder
+   
    set the itemdelimiter to ":"
    if item 1 of gitStatusTable = "fatal" then
       -- fatal: Not a git repository (or any of the parent directories): .git
