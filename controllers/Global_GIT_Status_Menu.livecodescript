@@ -110,6 +110,13 @@ on menu_CreateGithubProject
    put addResult
 end menu_CreateGithubProject
 
+on menu_LaunchGithub
+   -- put LocalArray ["remoteAddress"] into remoteAddress
+   -- put github_FindRepoName (remoteAddress) into repoName
+   put LocalArray ["shortFolder"] into repoName -- lazy
+   github_Launch repoName
+end menu_LaunchGithub
+
 on menu_DisplayGithubInfo
    put LocalArray ["shortFolder"] into repoName
    display_GitHubInfo repoName
