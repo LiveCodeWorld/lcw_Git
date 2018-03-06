@@ -16,6 +16,7 @@ local LocalArray
 on menu_Init tObject
    put the display_View of tObject into displayView
    put displayView into LocalArray ["displayView"]
+   put the title_Text of displayView into LocalArray ["shortFolder"]
    put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
    put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitFolder"]
 end menu_Init
@@ -84,6 +85,39 @@ end menu_DisplayCommitHistory
 on _
 end _
 
+on menu_CreateGithubProject
+   -- "lcw_Git"
+   put LocalArray ["shortFolder"] into repoName
+   put LocalArray ["gitFolder"] into gitFolder
+   --
+   put lcw_Ask ("Give the new repo a name..", repoName) into repoName
+   put lcw_Ask ("Give rpo a description...", "A project to interact with git and Github.") into repoDescription
+   --
+   github_CreateOrgRepo repoName, repoDescription
+   put the result into postJSON
+   put json_ToArray (postJSON) into githubProjectArray
+   --
+   -- put githubProjectArray ["clone_url"] into cloneURL
+   -- put githubProjectArray ["git_url"] into gitURL
+   -- put githubProjectArray ["html_url"] into htmlURL
+   
+   put githubProjectArray ["ssh_url"] into gitRemoteAddress
+   -- put merge("git@github.com:LiveCodeWorld/[[shortFolder]].git") into gitRemoteAddress
+   display_Array githubProjectArray
+   
+   git_AddFolderToRemote gitFolder, gitRemoteAddress
+   put the result into addResult
+   put addResult
+end menu_CreateGithubProject
+
+on menu_DisplayGithubInfo
+   put LocalArray ["shortFolder"] into repoName
+   display_GitHubInfo repoName
+end menu_DisplayGithubInfo
+
+on _
+end _
+
 on menu_ListTrackedFiles
    -- lists all of the already committed files being tracked by your git repo.
    -- https://stackoverflow.com/questions/8533202/list-files-in-local-git-repo
@@ -98,13 +132,8 @@ on menu_ListTrackedFiles
 end menu_ListTrackedFiles
 
 on menu_DisplayRemote
-   -- show url of remote branch
-   -- https://stackoverflow.com/questions/8816107/how-can-i-retrieve-the-remote-git-address-of-a-repo
    put LocalArray ["gitFolder"] into gitFolder
-   
-   put "git remote -v" into someShell
-   -- git_ExecuteShell someShell, gitFolder
-   put shell_ExecuteAtRoot (someShell, gitFolder) -- into shellResult
+   put git_GetRemoteAddress (gitFolder)
 end menu_DisplayRemote
 
 on menu_ListCommits
@@ -322,6 +351,16 @@ end git_ProjectNames
 
 --> Global | GIT | Status | Menu | Disabled
 -
+getprop disabled_CreateGithubProject [dsaf]
+   put LocalArray ["gitFolder"] into gitFolder
+   put git_GetRemoteAddress (gitFolder) into remoteAddress
+   if remoteAddress is empty then
+      return false
+   else
+      return true
+   end if
+end disabled_CreateGithubProject
+
 -- getprop disabled_AddAllUntracked [arrayView]
 put the hilited_Element of arrayView into pathItems
 if LocalArray ["topKey"] = "Untracked files:" and the number of items of pathItems < 3 then

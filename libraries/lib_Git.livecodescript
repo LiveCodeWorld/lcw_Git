@@ -15,25 +15,83 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 
 --> Events
 -
-on saveStackRequest
-   repeat for each line stackName in the openStacks
-      if word 1 to 2 of stackName = "Display Array" and the label of stack stackName = "Git Status" then
-         put the long id of group 1 of cd 1 of stack stackName into displayView
-         put the displayed_GitCheckoutFolder of displayView into gitCheckoutFolder
-         
-         send "display_GitFolderStatus gitCheckoutFolder,displayView" to displayView in 0 seconds -- so we save first 
-      end if
-   end repeat
-   pass saveStackRequest
+-- on saveStackRequest
+repeat for each line stackName in the openStacks
+   if word 1 to 2 of stackName = "Display Array" and the label of stack stackName = "Git Status" then
+      put the long id of group 1 of cd 1 of stack stackName into displayView
+      put the displayed_GitCheckoutFolder of displayView into gitCheckoutFolder
+      
+      send "display_GitFolderStatus gitCheckoutFolder,displayView" to displayView in 0 seconds -- so we save first 
+   end if
+end repeat
+pass saveStackRequest
 end saveStackRequest
 
 
 --> Working On
 -
+function git_GetRemoteAddress gitFolder
+   put git_GetRemote (gitFolder) into shellResult
+   --
+   put line 1 of shellResult into fetchLine
+   put word 1 of fetchLine into originWord
+   put word 2 of fetchLine into remoteFetchAddress
+   -- put word 3 of fetchLine into fetchBit -- "(fetch)"
+   
+   switch originWord
+      case "fatal"
+         -- fatal: Not a git repository (or any of the parent directories): .git
+         return empty
+      default
+         /*
+         origin	git@github.com:LiveCodeWorld/lcw_GIT.git (fetch)
+         origin	git@github.com:LiveCodeWorld/lcw_GIT.git (push)
+         */
+         
+         -- just going to assume they are the same for now
+         return remoteFetchAddress
+   end switch
+end git_GetRemoteAddress
+
+function git_GetRemote gitFolder
+   -- show url of remote branch
+   -- https://stackoverflow.com/questions/8816107/how-can-i-retrieve-the-remote-git-address-of-a-repo
+   
+   put "git remote -v" into someShell
+   put shell_ExecuteAtRoot (someShell, gitFolder) into shellResult
+   return shellResult
+end git_GetRemote
+
+command git_AddFolderToRemote gitFolder, gitRemoteAddress
+   -- gitRemoteAddress = githubProjectArray ["ssh_url"] 
+   git_AddRemoteOrigin gitRemoteAddress, gitFolder
+   git_PushFirstFolder gitFolder
+   return the result
+end git_AddFolderToRemote
+
+command git_SetRemoteOrigin gitRemoteAddress, gitFolder
+   put "git remote set-url origin" && gitRemoteAddress into someShell
+   git_ExecuteShell someShell, gitFolder
+   return the result
+end git_SetRemoteOrigin
+
+command git_AddRemoteOrigin gitRemoteAddress, gitFolder
+   put "git remote add origin" && gitRemoteAddress into someShell
+   git_ExecuteShell someShell, gitFolder
+   return the result
+end git_AddRemoteOrigin
+
+command git_PushFirstFolder gitFolder
+   -- make shure remote origin is set with "git_AddRemoteOrigin"
+   put "git push -u origin master" into someShell
+   git_ExecuteShell someShell, gitFolder
+   return the result
+end git_PushFirstFolder
+
 command git_DeleteFile someFile, pForce
    /*
    git rm Documentation/\*.txt
-   Removes all *.txt files from the index that are under the Documentation directory and any of its subdirectories.
+         Removes all *.txt files from the index that are under the Documentation directory and any of its subdirectories.
    
    Note that the asterisk * is quoted from the shell in this example; this lets git, and not the shell, expand the pathnames of files and subdirectories under the Documentation/ directory.
    

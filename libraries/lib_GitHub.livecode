@@ -13,14 +13,47 @@ A library for interfacing with GitHub APIv3.
 The gist library is seperate and moving forwards we wil create individual libraries for each GitHub subproject.
 */
 
---> GitHub | Issues
+--> Working on
+-
+command github_Launch repoName
+   put github_FetchRepoArray (repoName) into repoArray
+   put github_ExtractHtmlUrl (repoArray) into githubURL
+   launch url githubURL
+end github_Launch
+
+command display_GithubProjects
+   put github_FetchOrgRepoAray() into reposArray
+   display_Array reposArray
+end display_GithubProjects
+
+command display_GitHubInfo repoName
+   put github_FetchRepoArray (repoName) into repoArray
+   display_Array repoArray
+end display_GitHubInfo
+
+function github_FindRepoName remoteAddress
+   -- can fail to find if repo has been renamed
+   put github_FetchOrgRepoAray() into reposArray
+   repeat for each key repoNum in reposArray
+      put reposArray [repoNum]["ssh_url"] into sshURL
+      put reposArray [repoNum]["clone_url"] into cloneURL
+      if sshURL = remoteAddress or cloneURL = remoteAddress then
+         return reposArray [repoNum]["name"]
+      end if
+   end repeat
+   return empty
+end github_FindRepoName
+
+
+--> GitHub | Tokens
 -
 function github_GetApiToken
-   put pref_GetValue ("GitHubApiToken") into gitHubApiToken
+   -- check LastPass
+   -- put pref_GetValue ("GitHubApiToken") into gitHubApiToken
+   put pref_GetValue ("GitHubAuthoringToken") into gitHubApiToken
    if gitHubApiToken is empty then
-      -- a temporary access token to be revoked after initial test period
-      -- only allows the creation of gists
-      put "3b2215c0c8f894cbd0846010630a84a1063827ce" into gitHubApiToken
+      breakpoint
+      put pref_FetchValue ("GitHubAuthoringToken") into gitHubApiToken
    end if
    return gitHubApiToken
 end github_GetApiToken
@@ -131,10 +164,78 @@ end github_ListOrgIssues
 
 --> GitHub | Repos
 -
-function github_ListRepos
-   put github_RestGet ("/orgs/opn/repos") into someData
+command github_CreateOrgRepo rName, rDesc, pOrgName, pHomePage
+   -- https://developer.github.com/v3/repos/#create
+   if pOrgName is empty then put "LiveCodeWorld" into pOrgName
+   if pHomePage is empty then put "http://livecode.world" into pHomePage
+   put merge ("/orgs/[[pOrgName]]/repos") into restPath
+   --
+   put rName into postArray ["name"]
+   put rDesc into postArray ["description"]
+   put pHomePage into postArray ["homepage"]
+   put "false" into postArray ["private"]
+   put "true" into postArray ["has_issues"]
+   put "true" into postArray ["has_projects"]
+   put "true" into postArray ["has_wiki"]
+   --
+   put json_FromArray (postArray) into postJSON
+   github_RestPost restPath, postJSON
+   put the result into postResult
+   return postResult
+end github_CreateOrgRepo
+
+function github_ListOrgRepos pOrgName
+   put github_FetchOrgRepoAray (pOrgName) into reposArray
+   repeat for each key repoNum in reposArray
+      put reposArray [repoNum]["name"] into repoName
+      put repoName & CR after orgRepoNames
+   end repeat
+   delete char -1 of orgRepoNames
+   return orgRepoNames
+end github_ListOrgRepos
+
+function github_ExtractHtmlUrl repoArray
+   put repoArray ["html_url"] into githubURL
+   return githubURL
+end github_ExtractHtmlUrl
+
+command github_DeconstructRepoArray repoArray, @remoteAddress, @htmlURL, @cloneURL, @gitURL
+   put repoArray ["clone_url"] into cloneURL
+   put repoArray ["git_url"] into gitURL
+   put repoArray ["html_url"] into htmlURL
+   put repoArray ["ssh_url"] into remoteAddress
+end github_DeconstructRepoArray
+   
+function github_FetchOrgRepoAray pOrgName
+   put github_FetchOrgRepoListJson (pOrgName) into someJSON
+   put json_ToArray (someJSON) into reposArray
+   return reposArray
+end github_FetchOrgRepoAray
+
+function github_FetchOrgRepoListJson pOrgName
+   if pOrgName is empty then put "LiveCodeWorld" into pOrgName
+   put merge ("/orgs/[[pOrgName]]/repos") into restPath
+   put github_RestGet (restPath) into someJSON
+   return someJSON
+end github_FetchOrgRepoListJson
+
+function github_FetchRepoArray repoName, pOwner
+   if pOwner is empty then put "LiveCodeWorld" into pOwner
+   put merge ("/repos/[[pOwner]]/[[repoName]]") into restPath
+   put github_RestGet (restPath) into someJSON
+   put json_ToArray (someJSON) into repoArray
+   return repoArray
+end github_FetchRepoArray
+
+function github_ListMyRepos
+   put github_RestGet ("/user/repos") into someData
    return someData
-end github_ListRepos
+end github_ListMyRepos
+
+function github_ListPublicRepos
+   put github_RestGet ("/users/opn/repos") into someData
+   return someData
+end github_ListPublicRepos
 
 
 --> GitHub | REST
