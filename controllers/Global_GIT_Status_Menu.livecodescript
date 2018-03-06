@@ -19,6 +19,8 @@ on menu_Init tObject
    put the title_Text of displayView into LocalArray ["shortFolder"]
    put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
    put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitFolder"]
+   
+   put github_ListOrgRepos() into LocalArray ["lcwRepoNames"]
 end menu_Init
 
 
@@ -86,36 +88,62 @@ on _
 end _
 
 on menu_CreateGithubProject
-   -- "lcw_Git"
-   put LocalArray ["shortFolder"] into repoName
+   put LocalArray ["lcwRepoNames"] into lcwRepoNames
+   put LocalArray ["shortFolder"] into repoName   -- "lcw_Git"
    put LocalArray ["gitFolder"] into gitFolder
+   
+   if repoName is among the lines of lcwRepoNames then
+      answer warning "LiveCodeWorld repository already exists!"
+      exit to top
+   end if
+   
+   put git_GetRemoteAddress (gitFolder) into oldRemoteAddress
+   if oldRemoteAddress begins with "git@github.com:LiveCodeWorld/" then
+      put oldRemoteAddress
+      answer warning "LiveCodeWorld repository is already linked but remote repo does not exist!"
+      exit to top
+   end if
+   
    --
    put lcw_Ask ("Give the new repo a name..", repoName) into repoName
-   put lcw_Ask ("Give rpo a description...", "A project to interact with git and Github.") into repoDescription
-   --
+   put lcw_Ask ("Give repo a description...", "A project to interact with git and Github.") into repoDescription
+   
+   -- First Create a new GitHub repo
    github_CreateOrgRepo repoName, repoDescription
    put the result into postJSON
    put json_ToArray (postJSON) into githubProjectArray
-   --
-   -- put githubProjectArray ["clone_url"] into cloneURL
-   -- put githubProjectArray ["git_url"] into gitURL
-   -- put githubProjectArray ["html_url"] into htmlURL
-   
    put githubProjectArray ["ssh_url"] into gitRemoteAddress
-   -- put merge("git@github.com:LiveCodeWorld/[[shortFolder]].git") into gitRemoteAddress
-   display_Array githubProjectArray
    
-   git_AddFolderToRemote gitFolder, gitRemoteAddress
-   put the result into addResult
+   if oldRemoteAddress is not empty then
+      -- we will need to change it
+      put oldRemoteAddress
+      put lcw_Ask ("Are you sure you want to change the git remote address to...", gitRemoteAddress)into gitRemoteAddress
+      breakpoint
+      git_SetRemoteOrigin gitRemoteAddress, gitFolder
+      put the result into addResult
+   else
+      -- we need to add it
+      git_AddFolderToRemote gitFolder, gitRemoteAddress
+      put the result into addResult
+   end if
    put addResult
 end menu_CreateGithubProject
 
-on menu_LaunchGithub
-   -- put LocalArray ["remoteAddress"] into remoteAddress
-   -- put github_FindRepoName (remoteAddress) into repoName
-   put LocalArray ["shortFolder"] into repoName -- lazy
-   github_Launch repoName
+on menu_LaunchGithub displayView, lcwRepo
+   -- put LocalArray ["shortFolder"] into lcwRepo -- lazy
+   github_Launch lcwRepo
 end menu_LaunchGithub
+
+getprop lcw_Repo
+   put LocalArray ["shortFolder"] into repoName -- lazy
+   return repoName
+end lcw_Repo
+
+getprop lcw_Repos
+   put LocalArray ["lcwRepoNames"] into lcwRepoNames
+   sort lcwRepoNames
+   return lcwRepoNames
+end lcw_Repos
 
 on menu_DisplayGithubInfo
    put LocalArray ["shortFolder"] into repoName
@@ -142,6 +170,17 @@ on menu_DisplayRemote
    put LocalArray ["gitFolder"] into gitFolder
    put git_GetRemoteAddress (gitFolder)
 end menu_DisplayRemote
+
+on menu_FixRemote
+   put LocalArray ["gitFolder"] into gitFolder
+   put "git@github.com:LiveCodeWorld/lcw.git" into newRemoteAddress
+   put git_GetRemoteAddress (gitFolder) into oldRemoteAddress
+   --
+   put newRemoteAddress
+   put lcw_Ask ("Enter git remote address...", oldRemoteAddress)into gitRemoteAddress
+   git_SetRemoteOrigin gitRemoteAddress, projectFolder
+   put the result
+end menu_FixRemote
 
 on menu_ListCommits
    put LocalArray ["gitFolder"] into gitFolder
@@ -359,6 +398,15 @@ end git_ProjectNames
 --> Global | GIT | Status | Menu | Disabled
 -
 getprop disabled_CreateGithubProject [dsaf]
+   put LocalArray ["shortFolder"] into repoName -- lazy
+   put LocalArray ["lcwRepoNames"] into lcwRepoNames
+   if repoName is among the lines of lcwRepoNames then
+      return true
+   else
+      return false
+   end if
+   
+   -- old dodgy way
    put LocalArray ["gitFolder"] into gitFolder
    put git_GetRemoteAddress (gitFolder) into remoteAddress
    if remoteAddress is empty then

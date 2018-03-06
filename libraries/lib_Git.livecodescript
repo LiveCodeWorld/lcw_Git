@@ -34,7 +34,7 @@ function git_GetRemoteAddress gitFolder
    put git_GetRemote (gitFolder) into shellResult
    --
    put line 1 of shellResult into fetchLine
-   put word 1 of fetchLine into originWord
+   put token 1 of fetchLine into originWord
    put word 2 of fetchLine into remoteFetchAddress
    -- put word 3 of fetchLine into fetchBit -- "(fetch)"
    
