@@ -126,24 +126,18 @@ on menu_CreateGithubProject
       git_AddFolderToRemote gitFolder, gitRemoteAddress
       put the result into addResult
    end if
-   put addResult
+   refreshGitStatus
+   
+   if addResult is not empty then
+      beep
+      put addResult
+   end if
 end menu_CreateGithubProject
 
 on menu_LaunchGithub displayView, lcwRepo
    -- put LocalArray ["shortFolder"] into lcwRepo -- lazy
    github_Launch lcwRepo
 end menu_LaunchGithub
-
-getprop lcw_Repo
-   put LocalArray ["shortFolder"] into repoName -- lazy
-   return repoName
-end lcw_Repo
-
-getprop lcw_Repos
-   put LocalArray ["lcwRepoNames"] into lcwRepoNames
-   sort lcwRepoNames
-   return lcwRepoNames
-end lcw_Repos
 
 on menu_DisplayGithubInfo
    put LocalArray ["shortFolder"] into repoName
@@ -383,6 +377,17 @@ end menu_ArrayViewBehavior
 
 --> Global | GIT | Status | Menu | Props
 -
+getprop lcw_Repo
+   put LocalArray ["shortFolder"] into repoName -- lazy
+   return repoName
+end lcw_Repo
+
+getprop lcw_Repos
+   put LocalArray ["lcwRepoNames"] into lcwRepoNames
+   sort lcwRepoNames
+   return lcwRepoNames
+end lcw_Repos
+
 getprop git_ProjectName
    put git_GetRootFolder() into gitFolder
    return gitFolder
