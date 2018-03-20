@@ -4,15 +4,13 @@
 license: GPLv3
 name: Global_GIT_Status_Menu
 type: controllers
-version: 0.1
-
---> Variables
--
-local LocalArray
+version: 0.3
 
 
 --> Menu | Props
 -
+local LocalArray
+
 on menu_Init tObject
    put the display_View of tObject into displayView
    put displayView into LocalArray ["displayView"]
@@ -49,25 +47,21 @@ command mDoubleUp_GitLog indexView, someLine
 end mDoubleUp_GitLog
 
 
---> Private
--
-private command refreshGitStatus
-   put LocalArray ["displayView"] into displayView
-   put LocalArray ["gitFolder"] into gitFolder
-   display_GitFolderStatus gitFolder, displayView
-end refreshGitStatus
-
-
 --> Global | GIT | Status | Menu
 -
 on submenu_Branch
    return "Global | GIT | Branch | Menu"
 end submenu_Branch
 
-on menu_refreshGitStatus
-   stack_SaveEdited "all"
-   refreshGitStatus
-end menu_refreshGitStatus
+on _
+end _
+
+on insert_Menu
+   return "Global | GIT | Basics | Menu"
+end insert_Menu
+
+on _
+end _
 
 on menu_DisplayStatusReport arrayView
    put LocalArray ["gitFolder"] into gitFolder
@@ -84,69 +78,6 @@ on menu_DisplayCommitHistory arrayView
    set the line_Menu of indexView to "Global | Git | Line | Log | Menu"
 end menu_DisplayCommitHistory
 
-on _
-end _
-
-on menu_CreateGithubProject
-   put LocalArray ["lcwRepoNames"] into lcwRepoNames
-   put LocalArray ["shortFolder"] into repoName   -- "lcw_Git"
-   put LocalArray ["gitFolder"] into gitFolder
-   
-   if repoName is among the lines of lcwRepoNames then
-      answer warning "LiveCodeWorld repository already exists!"
-      exit to top
-   end if
-   
-   put git_GetRemoteAddress (gitFolder) into oldRemoteAddress
-   if oldRemoteAddress begins with "git@github.com:LiveCodeWorld/" then
-      put oldRemoteAddress
-      answer warning "LiveCodeWorld repository is already linked but remote repo does not exist!"
-      exit to top
-   end if
-   
-   --
-   put lcw_Ask ("Give the new repo a name..", repoName) into repoName
-   put lcw_Ask ("Give repo a description...", "A project to interact with git and Github.") into repoDescription
-   
-   -- First Create a new GitHub repo
-   github_CreateOrgRepo repoName, repoDescription
-   put the result into postJSON
-   put json_ToArray (postJSON) into githubProjectArray
-   put githubProjectArray ["ssh_url"] into gitRemoteAddress
-   
-   if oldRemoteAddress is not empty then
-      -- we will need to change it
-      put oldRemoteAddress
-      put lcw_Ask ("Are you sure you want to change the git remote address to...", gitRemoteAddress)into gitRemoteAddress
-      breakpoint
-      git_SetRemoteOrigin gitRemoteAddress, gitFolder
-      put the result into addResult
-   else
-      -- we need to add it
-      git_AddFolderToRemote gitFolder, gitRemoteAddress
-      put the result into addResult
-   end if
-   refreshGitStatus
-   
-   if addResult is not empty then
-      beep
-      put addResult
-   end if
-end menu_CreateGithubProject
-
-on menu_LaunchGithub displayView, lcwRepo
-   -- put LocalArray ["shortFolder"] into lcwRepo -- lazy
-   github_Launch lcwRepo
-end menu_LaunchGithub
-
-on menu_DisplayGithubInfo
-   put LocalArray ["shortFolder"] into repoName
-   display_GitHubInfo repoName
-end menu_DisplayGithubInfo
-
-on _
-end _
-
 on menu_ListTrackedFiles
    -- lists all of the already committed files being tracked by your git repo.
    -- https://stackoverflow.com/questions/8533202/list-files-in-local-git-repo
@@ -160,12 +91,21 @@ on menu_ListTrackedFiles
    display_Index shellResult, "git ls-tree"
 end menu_ListTrackedFiles
 
+on menu_ListCommits
+   put LocalArray ["gitFolder"] into gitFolder
+   put git_ListCommitHashes (gitFolder)
+end menu_ListCommits
+
+on _
+end _
+
 on menu_DisplayRemote
    put LocalArray ["gitFolder"] into gitFolder
    put git_GetRemoteAddress (gitFolder)
 end menu_DisplayRemote
 
 on menu_FixRemote
+   breakpoint
    put LocalArray ["gitFolder"] into gitFolder
    put "git@github.com:LiveCodeWorld/lcw.git" into newRemoteAddress
    put git_GetRemoteAddress (gitFolder) into oldRemoteAddress
@@ -175,107 +115,6 @@ on menu_FixRemote
    git_SetRemoteOrigin gitRemoteAddress, projectFolder
    put the result
 end menu_FixRemote
-
-on menu_ListCommits
-   put LocalArray ["gitFolder"] into gitFolder
-   put git_ListCommitHashes (gitFolder)
-end menu_ListCommits
-
-on _
-end _
-
-on menu_AddAllUntracked arrayView
-   set the cursor to watch
-   put the displayed_GitCheckoutFolder of arrayView into gitFolder
-   
-   git_AddEverything gitFolder
-   put the result into shellResult
-   if shellResult is not empty then
-      lcw_Notify shellResult
-   end if
-   refreshGitStatus
-end menu_AddAllUntracked
-
-on menu_StageThenCommit arrayView
-   put the displayed_GitCheckoutFolder of arrayView into gitFolder
-   put lcw_Ask ("Comment on this change...") into someComment
-   
-   git_CommitChanges someComment, gitFolder
-   refreshGitStatus
-end menu_StageThenCommit
-
-on menu_AddChangesToStage
-   -- dig into this. "git add --update" does not seem to do anything useful.
-   breakpoint
-   
-   git_AddChanged
-   refreshGitStatus
-end menu_AddChangesToStage
-
-on _
-end _
-
-on menu_PushCurrentBranch arrayView
-   -- TO push THE new BRANCH TO A REMOTE REPOSITORY
-   
-   set the cursor to watch
-   put the displayed_GitCheckoutFolder of arrayView into gitFolder
-   put git_CurrentBranchName (gitFolder) into currentBranchName
-   put "git push origin" && kwote (currentBranchName) into someShell
-   
-   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
-   
-   switch
-      case shellResult begins with "Broken pipe"
-         break
-      case token 1 of shellResult = "Error"
-         /*
-         ERROR: Your account is disabled. Please see https://github.com/account/billing
-         fatal: Could not read from remote repository.
-         
-         Please make sure you have the correct access rights
-         and the repository exists.
-         */
-         put "Check billing" into btnText
-         answer shellResult with btnText or "Cancel"
-         if it is btnText then
-            launch url "https://github.com/account/billing"
-         end if
-         break
-      default
-         lcw_Notify shellResult
-         refreshGitStatus
-   end switch
-end menu_PushCurrentBranch
-
-on menu_Pull
-   -- TO PULL A new BRANCH FROM A REMOTE REPOSITORY
-   -- put merge("git pull origin [[remoteBranch]]:[[newLocalBranch]]") into someShell
-   -- put "git pull" into someShell
-   -- put "git pull origin master" into someShell
-   
-   put LocalArray ["gitFolder"] into gitFolder
-   
-   put git_CurrentBranchName (gitFolder) into currentBranchName
-   put "git pull origin" && kwote (currentBranchName) into someShell
-   
-   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
-   display_Lines shellResult, someShell
-   put the result into indexView
-   set the title_Menu of indexView to "Global | Git | Pull | Menu"
-   set the line_Menu of indexView to "Global | Git | Pull | Line | Menu"
-   -- set the displayed_ScriptObject of indexView to empty
-   set the displayed_GitCheckoutFolder of indexView to gitFolder
-   set the displayed_GitBranch of indexView to currentBranchName
-   
-   refreshGitStatus
-   
-   /*
-   stack_RevertLoaded
-   put the result into displayView
-   set the menu_Title of displayView to "Global | Git | Pull | Menu"
-   */
-end menu_Pull
 
 on _
 end _
@@ -377,17 +216,6 @@ end menu_ArrayViewBehavior
 
 --> Global | GIT | Status | Menu | Props
 -
-getprop lcw_Repo
-   put LocalArray ["shortFolder"] into repoName -- lazy
-   return repoName
-end lcw_Repo
-
-getprop lcw_Repos
-   put LocalArray ["lcwRepoNames"] into lcwRepoNames
-   sort lcwRepoNames
-   return lcwRepoNames
-end lcw_Repos
-
 getprop git_ProjectName
    put git_GetRootFolder() into gitFolder
    return gitFolder
@@ -402,55 +230,12 @@ end git_ProjectNames
 
 --> Global | GIT | Status | Menu | Disabled
 -
-getprop disabled_CreateGithubProject [dsaf]
-   put LocalArray ["shortFolder"] into repoName -- lazy
-   put LocalArray ["lcwRepoNames"] into lcwRepoNames
-   if repoName is among the lines of lcwRepoNames then
-      return true
-   else
-      return false
-   end if
-   
-   -- old dodgy way
-   put LocalArray ["gitFolder"] into gitFolder
-   put git_GetRemoteAddress (gitFolder) into remoteAddress
-   if remoteAddress is empty then
-      return false
-   else
-      return true
-   end if
-end disabled_CreateGithubProject
-
--- getprop disabled_AddAllUntracked [arrayView]
-put the hilited_Element of arrayView into pathItems
-if LocalArray ["topKey"] = "Untracked files:" and the number of items of pathItems < 3 then
-   return false
-else
-   return "delete"
-end if
-end disabled_AddAllUntracked
 
 
---> Menu | Props
+--> Private
 -
--- getprop menu_Target [mTitlePath]
-if mTitlePath contains "Global | Git | Stack | Menu" then
-   return the displayed_Object of me
-else if mTitlePath contains "GIT | Line | Menu" then
-   put the git_Tree of me into cardTree
-   put the tree_SelectedIndex of cardTree into relPathLine
-   set the itemdelimiter to ":"
-   switch item 1 of relPathLine
-      case "unmerged"
-         delete item 1 of relPathLine
-         put word 1 to -1 of relPathLine into shortFile
-         return git_GetRootFolder() & shortFile
-      case "new file"
-         delete item 1 of relPathLine
-         put word 1 to -1 of relPathLine into shortFile
-         return git_GetRootFolder() & shortFile
-   end switch
-else
-   pass menu_Target
-end if
-end menu_Target
+private command refreshGitStatus
+   put LocalArray ["displayView"] into displayView
+   put LocalArray ["gitFolder"] into gitFolder
+   display_GitFolderStatus gitFolder, displayView
+end refreshGitStatus

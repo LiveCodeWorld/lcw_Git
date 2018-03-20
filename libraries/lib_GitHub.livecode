@@ -15,6 +15,35 @@ The gist library is seperate and moving forwards we wil create individual librar
 
 --> Working on
 -
+command github_CreateProject repoName, gitFolder, repoDescription
+   -- First Create a new GitHub repo
+   github_CreateOrgRepo repoName, repoDescription
+   put the result into postJSON
+   put json_ToArray (postJSON) into githubProjectArray
+   put githubProjectArray ["ssh_url"] into gitRemoteAddress
+   
+   if oldRemoteAddress is not empty then
+      -- we will need to change it
+      put oldRemoteAddress
+      put lcw_Ask ("Are you sure you want to change the git remote address to...", gitRemoteAddress)into gitRemoteAddress
+      breakpoint
+      git_SetRemoteOrigin gitRemoteAddress, gitFolder
+      put the result into addResult
+   else
+      -- we need to add it
+      git_AddFolderToRemote gitFolder, gitRemoteAddress
+      put the result into addResult
+   end if
+end github_CreateProject
+
+function github_FetchReadmeMD githubProjectName
+   -- put github_FetchReadmeMD ("lcw_Menus") into readmeJSON
+   put "LiveCodeWorld" into orgName
+   put merge ("https://raw.githubusercontent.com/[[orgName]]/[[githubProjectName]]/master/README.md") into readmeURL
+   put url readmeURL into readmeMarkdown
+   return readmeMarkdown
+end github_FetchReadmeMD
+
 command github_Launch repoName
    put github_FetchRepoArray (repoName) into repoArray
    put github_ExtractHtmlUrl (repoArray) into githubURL
@@ -49,11 +78,13 @@ end github_FindRepoName
 -
 function github_GetApiToken
    -- check LastPass
-   -- put pref_GetValue ("GitHubApiToken") into gitHubApiToken
-   put pref_GetValue ("GitHubAuthoringToken") into gitHubApiToken
+   -- token is cached first time we use this
+   
+   put "GitHubAuthoringToken" into prefName -- "GitHubApiToken"
+   put pref_GetValue (prefName) into gitHubApiToken
    if gitHubApiToken is empty then
-      breakpoint
-      put pref_FetchValue ("GitHubAuthoringToken") into gitHubApiToken
+      put pref_FetchValue (prefName) into gitHubApiToken
+      pref_SetValue prefName, gitHubApiToken
    end if
    return gitHubApiToken
 end github_GetApiToken

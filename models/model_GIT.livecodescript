@@ -7,6 +7,54 @@ type: model
 version: 0.1
 
 
+--> Props
+-
+getprop git_IsActive [pDontUseGit]
+   put the effective filename of the stack_Object of the target into someFile
+   if pDontUseGit is true then
+      put git_FindDotGitFolder (someFile) into checkoutFolder -- slightly faster (2 ticks)
+   else
+      put git_GetCheckoutFolder (someFile) into checkoutFolder -- uses GIT to check things (3 ticks)
+   end if
+   return checkoutFolder is not empty
+end git_IsActive
+
+getprop git_WithinCheckoutFolder [pDontUseGit]
+   -- checks the script file ???
+   -- always in git?
+   put the script_File of the target into someFile
+   if pDontUseGit is true then
+      put git_FindDotGitFolder (someFile) into checkoutFolder -- slightly faster (2 ticks)
+   else
+      put git_GetCheckoutFolder (someFile) into checkoutFolder -- uses GIT to check things (3 ticks)
+   end if
+   return checkoutFolder is not empty
+end git_WithinCheckoutFolder
+
+getprop git_CheckoutFolder
+   put the mainstack_File of the target  into objectFile
+   try
+      put git_GetCheckoutFolder (objectFile) into repoRootFolder
+   catch e
+      put git_FindDotGitFolder (someFile) into checkoutFolder -- slightly faster (2 ticks)
+   end try
+   return repoRootFolder
+end git_CheckoutFolder
+
+getprop git_Project
+   put the git_CheckoutFolder of the target into gitRootFolder
+   put git_GetProjectArray() into gitProjectArray
+   put gitProjectArray [gitRootFolder]["project name"] into projectName
+   return projectName
+end git_Project
+
+function git_Version
+   git_ExecuteShell "git --version"
+   put word 3 of the result into someVersion
+   return someVersion
+end git_Version
+
+
 --> Working On
 -
 function git_GetRootFolder
@@ -22,7 +70,7 @@ command git_SetRootFolder gitRootFolder
 end git_SetRootFolder
 
 
---> Working On | init
+--> Working On | Init
 -
 command git_AddIgnore gitRootFolder
    text_AddTrailing gitRootFolder, slash
@@ -71,26 +119,66 @@ command git_InitFolder gitRootFolder, pDontAdd
 end git_InitFolder
 
 
---> GIT | Model | Props
+--> Git | Model | Folder
 -
-getprop git_CheckoutFolder
-   put the mainstack_File of the target  into objectFile
-   put git_GetCheckoutFolder (objectFile) into repoRootFolder
-   return repoRootFolder
-end git_CheckoutFolder
-
-getprop git_WithinCheckoutFolder [pDontUseGit]
-   put the script_File of the target into someFile
-   if pDontUseGit is true then
-      put git_FindDotGitFolder (someFile) into checkoutFolder -- slightly faster (2 ticks)
+function git_GetCheckoutFolder pFolderOrFile
+   -- see also "git_WithinCheckoutFolder"
+   put the defaultFolder into oFolder
+   if pFolderOrFile is empty then
+      put the defaultFolder into pFolderOrFile
    else
-      put git_GetCheckoutFolder (someFile) into checkoutFolder -- uses GIT to check things (3 ticks)
+      if there is a file pFolderOrFile then
+         set the itemdelimiter to "/"
+         delete item -1 of pFolderOrFile
+      end if
+      set the defaultFolder to pFolderOrFile
    end if
-   return checkoutFolder is not empty
-end git_WithinCheckoutFolder
+   
+   put git_Version() into someVersion
+   if someVersion begins with "1.7." then
+      put "git rev-parse --show-toplevel" into someShell
+      put git_PathToCommandLine() into gitPath
+      shell_BashParamEscape gitPath
+      put gitPath before someShell
+      put shell (someShell) into shellResult
+      
+      set the itemdelimiter to ":"
+      if item 1 of shellResult = "fatal" then
+         set the defaultFolder to oFolder
+         return empty
+      end if
+      
+      put word 1 to -1 of shellResult & "/" into gitRootFolder
+   else
+      put "git rev-parse --show-cdup" into someShell
+      put git_PathToCommandLine() into gitPath
+      shell_BashParamEscape gitPath
+      put gitPath before someShell
+      put shell (someShell) into shellResult
+      
+      set the itemdelimiter to ":"
+      if item 1 of shellResult = "fatal" then
+         set the defaultFolder to oFolder
+         return empty
+      end if
+      
+      put word 1 to -1 of shellResult into someChars
+      put the number of chars of someChars/3 into upCount
+      
+      set the itemdelimiter to "/"
+      put -1 - upCount into minusItem
+      put (item 1 to minusItem of pFolderOrFile) into gitRootFolder
+      put "/" after gitRootFolder
+   end if
+   
+   -- put git_FindDotGitFolder (someFile) into gitRootFolder -- an older verison could use
+   
+   set the defaultFolder to oFolder
+   return gitRootFolder
+end git_GetCheckoutFolder
 
 
---> GIT | Model
+--> Git | Model
 -
 function git_GetProjectArray
    put lcw_FetchArray ("GitProjectArray.array") into gitProjectArray

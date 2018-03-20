@@ -4,7 +4,13 @@
 license: GPLv3
 name: Global_GIT_Menu
 type: controller
-version: 0.1
+version: 0.2
+
+/*
+As the general git menu, this probably should not have a scriptObject as the menu_Target
+becasue it will be displayed by the standard project menu interface.
+Change to indexView or make it clever.
+*/
 
 
 --> Menu | Props
