@@ -69,6 +69,56 @@ on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
 end mDoubleUp_DisplayGitFile
 
 
+--> Git | Display | Refresh
+-
+command refresh_GitStatus projectName
+   put display_FindView ("Git Status", projectName) into gitDisplayView
+   if exists (gitDisplayView) then
+      -- refresh git display
+      put the git_CheckoutFolder of stack projectName into gitCheckoutFolder
+      if there is not a folder gitCheckoutFolder then
+         breakpoint
+      end if
+      put git_GetStatusArray (gitCheckoutFolder) into statusArray
+      set the displayed_Array of gitDisplayView to statusArray
+   end if
+end refresh_GitStatus
+
+command git_RefreshDisplay pTreeTitle
+   -- this is now handled locally in each display
+   -- look at this to dig out older code for files and log.
+   breakpoint
+   
+   put the git_TreeField of me into gitTreeField
+   if pTreeTitle is empty then put the title_Text of gitTreeField into pTreeTitle
+   
+   switch pTreeTitle
+      case "Files in Repository"
+         set the cursor to watch
+         put git_ExecuteShellCommand ("git ls-files") into commitedFiles
+         put file_IndexToOutline (commitedFiles, "outline") into someOutline
+         set the tree_Display [pTreeTitle] of gitTreeField to someOutline
+         break
+      case "Log"
+         put "git log --pretty=oneline" into someShell
+         -- put space & "-n30" after someShell
+         put git_ExecuteShellCommand(someShell) into simpleLog
+         put git_LogLinkOutline(simpleLog) into someOutline
+         set the tree_Display ["Log"] of gitTreeField to someOutline
+         break
+      default
+         put git_FetchStatusTable() into gitStatusTable
+         put git_ConstructStatusArray (gitStatusTable) into statusArray
+         
+         put statusArray ["gitStatusTable"] into gitStatusTable
+         put statusArray ["gitTitle"] into gitTitle
+         
+         set the tree_Display [gitTitle] of gitTreeField to gitStatusTable
+   end switch
+   return someOutline
+end git_RefreshDisplay
+
+
 --> Git | Display | Stack
 -
 command git_DisplayTempStackRevision someObject, commitHash
@@ -144,49 +194,13 @@ command git_DisplayTempStackFromTreeish commitHash, pToFile
 end git_DisplayTempStackFromTreeish
 
 
---> Git | Display | Status
--
-command git_RefreshDisplay pTreeTitle
-   -- this is now handled locally in each display
-   -- look at this to dig out older code for files and log.
-   
-   put the git_TreeField of me into gitTreeField
-   if pTreeTitle is empty then put the title_Text of gitTreeField into pTreeTitle
-   
-   switch pTreeTitle
-      case "Files in Repository"
-         set the cursor to watch
-         put git_ExecuteShellCommand ("git ls-files") into commitedFiles
-         put file_IndexToOutline (commitedFiles, "outline") into someOutline
-         set the tree_Display [pTreeTitle] of gitTreeField to someOutline
-         break
-      case "Log"
-         put "git log --pretty=oneline" into someShell
-         -- put space & "-n30" after someShell
-         put git_ExecuteShellCommand(someShell) into simpleLog
-         put git_LogLinkOutline(simpleLog) into someOutline
-         set the tree_Display ["Log"] of gitTreeField to someOutline
-         break
-      default
-         put git_FetchStatusTable() into gitStatusTable
-         put git_ConstructStatusArray (gitStatusTable) into statusArray
-         
-         put statusArray ["gitStatusTable"] into gitStatusTable
-         put statusArray ["gitTitle"] into gitTitle
-         
-         set the tree_Display [gitTitle] of gitTreeField to gitStatusTable
-   end switch
-   return someOutline
-end git_RefreshDisplay
-
-
 --> Display | GIT | Status
 -
-command display_GitStatus pScriptObject, pArrayView
+command display_GitStatus pScriptObject
    if pScriptObject is empty then put the long id of the target into pScriptObject
    put the git_CheckoutFolder of pScriptObject into gitCheckoutFolder
    
-   display_GitFolderStatus gitCheckoutFolder, pArrayView
+   display_GitFolderStatus gitCheckoutFolder
    put the result into arrayView
    return arrayView
 end display_GitStatus

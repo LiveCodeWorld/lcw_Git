@@ -46,7 +46,9 @@ end menu_Init
 -
 on menu_DisplayGitStatus
    stack_SaveEdited "all"
-   _RefreshGitStatus
+   --
+   put LocalArray ["gitFolder"] into gitFolder
+   display_GitFolderStatus gitFolder
 end menu_DisplayGitStatus
 
 on menu_RefreshGitStatus
@@ -216,12 +218,30 @@ getprop disabled_AddAllUntracked
 end disabled_AddAllUntracked
 
 getprop disabled_StageThenCommit
-   return LocalArray ["gitIsActive"] is false
+   if LocalArray ["gitIsActive"] is false then return true
+   put _FilesToCommit() into untrackedFiles -- too slow
+   if untrackedFiles is empty then
+      return true
+   else
+      return false
+   end if
 end disabled_StageThenCommit
 
 
 --> Private
 -
+private function _FilesToCommit
+   put LocalArray ["gitDisplayView"] into gitDisplayView
+   if exists (gitDisplayView) is false then
+      -- slow
+      put _GitStatusArray () into statusArray
+   else
+      put the displayed_Array of gitDisplayView into statusArray
+   end if
+   put statusArray ["Changes not staged for commit:"]["modified"] into modifiedFiles
+   return modifiedFiles
+end _FilesToCommit
+
 private function _FilesToAdd
    put LocalArray ["gitDisplayView"] into gitDisplayView
    if exists (gitDisplayView) is false then
@@ -269,11 +289,6 @@ private function _IsGitStatusDisplay
 end _IsGitStatusDisplay
 
 private command _RefreshGitStatus
-   put LocalArray ["gitFolder"] into gitFolder
-   if _IsGitStatusDisplay() then
-      put LocalArray ["displayView"] into displayView
-      display_GitFolderStatus gitFolder, displayView
-   else
-      display_GitFolderStatus gitFolder
-   end if
+   put LocalArray ["projectName"] into projectName
+   refresh_GitStatus projectName
 end _RefreshGitStatus

@@ -21,7 +21,7 @@ repeat for each line stackName in the openStacks
       put the long id of group 1 of cd 1 of stack stackName into displayView
       put the displayed_GitCheckoutFolder of displayView into gitCheckoutFolder
       
-      send "display_GitFolderStatus gitCheckoutFolder,displayView" to displayView in 0 seconds -- so we save first 
+      send "display_GitFolderStatus gitCheckoutFolder" to displayView in 0 seconds -- so we save first 
    end if
 end repeat
 pass saveStackRequest
@@ -30,13 +30,13 @@ end saveStackRequest
 
 --> Working On
 -
-function git_ListUncomittedFiles gitFolder
+function git_ListModifiedFiles gitFolder
    put git_GetStatusArray (gitFolder) into statusArray
-   get statusArray ["Untracked files:"]["files"]
-   put keys(it) into untrackedFileList
-   -- sort untrackedFileList
-   return untrackedFileList
-end git_ListUncomittedFiles
+   get statusArray ["Changes not staged for commit:"]["modified"]
+   put keys(it) into modifiedFileList
+   sort modifiedFileList
+   return modifiedFileList
+end git_ListModifiedFiles
 
 function git_ListUntrackedFiles gitFolder
    put git_GetStatusArray (gitFolder) into statusArray
@@ -47,6 +47,10 @@ function git_ListUntrackedFiles gitFolder
 end git_ListUntrackedFiles
 
 function git_GetStatusArray gitCheckoutFolder
+   if there is not a folder gitCheckoutFolder then
+      breakpoint
+      return empty
+   end if
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
    put git_ConstructStatusArray (gitStatusTable) into statusArray
    array_StripEmptyKeys statusArray

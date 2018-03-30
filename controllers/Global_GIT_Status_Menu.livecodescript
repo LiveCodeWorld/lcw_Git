@@ -14,7 +14,7 @@ local LocalArray
 on menu_Init tObject
    put the display_View of tObject into displayView
    put displayView into LocalArray ["displayView"]
-   put the title_Text of displayView into LocalArray ["shortFolder"]
+   put the title_Text of displayView into LocalArray ["projectName"]
    put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
    put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitFolder"]
    
@@ -222,7 +222,10 @@ end disabled_Init
 --> Private
 -
 private command refreshGitStatus
-   put LocalArray ["displayView"] into displayView
+   put LocalArray ["projectName"] into projectName
+   refresh_GitStatus projectName
+   return true
+   
    put LocalArray ["gitFolder"] into gitFolder
-   display_GitFolderStatus gitFolder, displayView
+   display_GitFolderStatus gitFolder
 end refreshGitStatus
