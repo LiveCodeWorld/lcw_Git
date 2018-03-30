@@ -18,6 +18,9 @@ on menu_Init tObject
    put the title_Text of displayView into projectName
    put projectName into LocalArray ["projectName"]
    
+   put display_FindView ("Git Status", projectName) into gitDisplayView
+   put gitDisplayView into LocalArray ["gitDisplayView"]
+   
    put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
    
    if there is a stack projectName then
@@ -38,6 +41,11 @@ end menu_Init
 
 --> Global | GIT | Basics | Menu
 -
+on menu_DisplayGitStatus
+   stack_SaveEdited "all"
+   _RefreshGitStatus
+end menu_DisplayGitStatus
+
 on menu_RefreshGitStatus
    stack_SaveEdited "all"
    _RefreshGitStatus
@@ -77,13 +85,13 @@ end menu_Pull
 on _
 end _
 
-on menu_AddAllUntracked arrayView
+on menu_AddAllUntracked
    /*
    -- dig into this. "git add --update" does not seem to do anything useful.
    git_AddChanged
    */
-    set the cursor to watch
-   put the displayed_GitCheckoutFolder of arrayView into gitFolder
+   set the cursor to watch
+   put LocalArray ["gitFolder"] into gitFolder
    
    git_AddEverything gitFolder
    put the result into shellResult
@@ -93,10 +101,10 @@ on menu_AddAllUntracked arrayView
    _RefreshGitStatus
 end menu_AddAllUntracked
 
-on menu_StageThenCommit arrayView
-   put the displayed_GitCheckoutFolder of arrayView into gitFolder
+on menu_StageThenCommit
+   put LocalArray ["gitFolder"] into gitFolder
+   --
    put lcw_Ask ("Comment on this change...") into someComment
-   
    git_CommitChanges someComment, gitFolder
    _RefreshGitStatus
 end menu_StageThenCommit
@@ -104,11 +112,11 @@ end menu_StageThenCommit
 on _
 end _
 
-on menu_PushCurrentBranch arrayView
+on menu_PushCurrentBranch
    -- TO push THE new BRANCH TO A REMOTE REPOSITORY
    
    set the cursor to watch
-   put the displayed_GitCheckoutFolder of arrayView into gitFolder
+   put LocalArray ["gitFolder"] into gitFolder
    put git_CurrentBranchName (gitFolder) into currentBranchName
    put "git push origin" && kwote (currentBranchName) into someShell
    
@@ -137,36 +145,90 @@ on menu_PushCurrentBranch arrayView
    end switch
 end menu_PushCurrentBranch
 
+on _
+end _
+
+on menu_GitDocumentation arrayView, menuChoice
+   switch menuChoice
+      case "Crash course"
+         launch url "http://git.or.cz/course/svn.html"
+         break
+      case "Git Wiki"
+         launch url "http://git.or.cz/gitwiki/GitDocumentation"
+         break
+      case "Git User manual"
+         launch url "http://www.kernel.org/pub/software/scm/git/docs/user-manual.html"
+         break
+   end switch
+end menu_GitDocumentation
+
 
 --> Global | GIT | Basics | Menu | Props
 -
 
 --> Global | GIT | Basics | Menu | Disabled
 -
-getprop disabled_RefreshGitStatus [arrayView]
-   if _IsGitStatusDisplay() is false then return true
-   return LocalArray ["gitIsActive"] is false
+getprop disabled_RefreshGitStatus
+   if LocalArray ["gitIsActive"] is false then
+      return true
+   end if
+   
+   put LocalArray ["projectName"] into projectName
+   if _ExistsGitStatusDisplay (projectName) then
+      return false
+   else
+      return "delete"
+   end if
 end disabled_RefreshGitStatus
 
-getprop disabled_Pull [arrayView]
+getprop disabled_DisplayGitStatus
+   if LocalArray ["gitIsActive"] is false then
+      return true
+   end if
+   
+   put LocalArray ["projectName"] into projectName
+   if _ExistsGitStatusDisplay (projectName) then
+      return "delete"
+   else
+      return false
+   end if
+end disabled_DisplayGitStatus
+
+getprop disabled_Pull
    return LocalArray ["_RemoteIsBad"]
 end disabled_Pull
 
-getprop disabled_PushCurrentBranch [arrayView]
+getprop disabled_PushCurrentBranch
    return LocalArray ["_RemoteIsBad"]
 end disabled_PushCurrentBranch
 
-getprop disabled_AddAllUntracked [arrayView]
+getprop disabled_AddAllUntracked
    return LocalArray ["gitIsActive"] is false
 end disabled_AddAllUntracked
 
-getprop disabled_StageThenCommit [arrayView]
+getprop disabled_StageThenCommit
    return LocalArray ["gitIsActive"] is false
 end disabled_StageThenCommit
 
 
 --> Private
 -
+private function _FilesToAdd
+   put _GitStatusArray () into statusArray
+end _FilesToAdd
+
+private function _GitStatusArray
+   put LocalArray ["gitFolder"] into gitFolder
+   put git_GetStatusArray (gitFolder) into statusArray
+   return statusArray
+end _GitStatusArray
+
+private function _ExistsGitStatusDisplay projectName
+   -- put display_FindView ("Git Status", projectName) into gitDisplayView
+   put LocalArray ["gitDisplayView"] into gitDisplayView
+   return exists (gitDisplayView)
+end _ExistsGitStatusDisplay
+
 private function _RemoteIsBad
    put LocalArray ["gitFolder"] into gitFolder
    put git_GetRemoteAddress (gitFolder) into remoteAddress
@@ -185,12 +247,8 @@ end _RemoteIsBad
 
 private function _IsGitStatusDisplay
    put LocalArray ["displayView"] into displayView
-   put the stack_Label of displayView into sLabel
-   if sLabel = "Git Status" then
-      return true
-   else
-      return false
-   end if
+   put LocalArray ["projectName"] into projectName
+   return _ExistsGitStatusDisplay (projectName)
 end _IsGitStatusDisplay
 
 private command _RefreshGitStatus

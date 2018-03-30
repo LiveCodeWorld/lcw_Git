@@ -53,10 +53,6 @@ on submenu_Init
    return "Global | GIT | Init | Menu"
 end submenu_Init
 
-on submenu_Branch
-   return "Global | GIT | Branch | Menu"
-end submenu_Branch
-
 on _
 end _
 
@@ -66,6 +62,61 @@ end insert_Menu
 
 on _
 end _
+
+on submenu_Branch
+   return "Global | GIT | Branch | Menu"
+end submenu_Branch
+
+on submenu_Stash
+   return "Global | GIT | Stash | Menu"
+end submenu_Stash
+
+on submenu_Tag
+   return "Global | GIT | Tag | Menu"
+end submenu_Tag
+
+on _
+end _
+
+on submenu_Git
+   return "Global | GIT | Menu"
+end submenu_Git
+
+-- on submenu_GitFiles
+return "Global | GIT | Files | Menu"
+end submenu_GitFiles
+
+on submenu_GitProjects
+   return "Global | GIT | Folder | Menu"
+end submenu_GitProjects
+
+on submenu_GitSettings
+   return "Global | GIT | Settings | Menu"
+end submenu_GitSettings
+
+on _
+end _
+
+on submenu_GitScript
+   return "Global | GIT | Script | Menu"
+end submenu_GitScript
+
+on submenu_Gist
+   return "Global | Gist | Menu"
+end submenu_Gist
+
+on submenu_Dev
+   return "Dev | Menu"
+end submenu_Dev
+
+
+--> Dev | Menu
+-
+on menu_CompactGit
+   put "git gc" into someShell
+   put git_ExecuteShellCommand(someShell) into shellResult
+   lcw_Notify shellResult, true
+end menu_CompactGit
 
 on menu_DisplayStatusReport arrayView
    put LocalArray ["gitFolder"] into gitFolder
@@ -103,71 +154,6 @@ end menu_ListCommits
 on _
 end _
 
-on submenu_Tag
-   return "Global | GIT | Tag | Menu"
-end submenu_Tag
-
-on submenu_Stash
-   return "Global | GIT | Stash | Menu"
-end submenu_Stash
-
-on menu_CompactGit
-   put "git gc" into someShell
-   put git_ExecuteShellCommand(someShell) into shellResult
-   lcw_Notify shellResult, true
-end menu_CompactGit
-
-on _
-end _
-
-on submenu_Git
-   return "Global | GIT | Menu"
-end submenu_Git
-
--- on submenu_GitFiles
-return "Global | GIT | Files | Menu"
-end submenu_GitFiles
-
-on submenu_GitProjects
-   return "Global | GIT | Folder | Menu"
-end submenu_GitProjects
-
-on submenu_GitSettings
-   return "Global | GIT | Settings | Menu"
-end submenu_GitSettings
-
-on _
-end _
-
-on submenu_GitScript
-   return "Global | GIT | Script | Menu"
-end submenu_GitScript
-
-on submenu_Gist
-   return "Global | Gist | Menu"
-end submenu_Gist
-
-on menu_GitDocumentation arrayView, menuChoice
-   switch menuChoice
-      case "Crash course"
-         launch url "http://git.or.cz/course/svn.html"
-         break
-      case "Git Wiki"
-         launch url "http://git.or.cz/gitwiki/GitDocumentation"
-         break
-      case "Git User manual"
-         launch url "http://www.kernel.org/pub/software/scm/git/docs/user-manual.html"
-         break
-   end switch
-end menu_GitDocumentation
-
-on submenu_Dev
-   return "Dev | Menu"
-end submenu_Dev
-
-
---> Dev | Menu
--
 on menu_SelectProject displayView, gitProjectName
    breakpoint
    display_GitStatus gitProjectName

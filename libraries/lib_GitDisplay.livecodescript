@@ -191,7 +191,7 @@ command display_GitStatus pScriptObject, pArrayView
    return arrayView
 end display_GitStatus
 
-command display_GitProjectStatus projectName, pArrayView
+command display_GitProjectStatus projectName
    put project_GetFolder (projectName) into projectFolder
    if there is not a folder projectFolder then
       if projectFolder is not empty then put projectFolder
@@ -200,20 +200,22 @@ command display_GitProjectStatus projectName, pArrayView
       exit to top
    end if
    
-   display_GitFolderStatus projectFolder, pArrayView
+   display_GitFolderStatus projectFolder
    put the result into displayView
    return displayView
 end display_GitProjectStatus
 
-command display_GitFolderStatus gitCheckoutFolder, pArrayView
+command display_GitFolderStatus gitCheckoutFolder
    if there is not a folder gitCheckoutFolder then return empty
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
-   display_GitStatusTable gitStatusTable, gitCheckoutFolder, pArrayView
+   -- see "git_GetStatusArray (gitCheckoutFolder)"
+   --
+   display_GitStatusTable gitStatusTable, gitCheckoutFolder
    put the result into arrayView
    return arrayView
 end display_GitFolderStatus
 
-command display_GitStatusTable gitStatusTable, fileOrFolder, pArrayView
+command display_GitStatusTable gitStatusTable, fileOrFolder
    -- can be called from anywhere inside a git repo
    put git_GetCheckoutFolder (fileOrFolder) into gitCheckoutFolder
    
@@ -224,29 +226,34 @@ command display_GitStatusTable gitStatusTable, fileOrFolder, pArrayView
       return empty
    end if
    
+   -- let's find an existing displayView if it exists
+   set the itemdelimiter to slash
+   put item -1 of gitCheckoutFolder into gitShortFolder
+   put display_FindView ("Git Status", gitShortFolder) into displayView
+   set the itemdelimiter to comma
+   
+   -- see "git_GetStatusArray (gitCheckoutFolder)"
    put git_ConstructStatusArray (gitStatusTable) into statusArray
    array_StripEmptyKeys statusArray
    
-   if exists (pArrayView) then
-      set the displayed_Array of pArrayView to statusArray
+   if exists (displayView) then
+      set the displayed_Array of displayView to statusArray
    else
-      set the itemdelimiter to slash
-      put item -1 of gitCheckoutFolder into gitShortFolder
       put gitShortFolder && ",GIT Status" into someTitle
       
       put "mDoubleUp_DisplayGitFile" into mDoubleUpCommand
       
       display_Array statusArray, someTitle, "Global | GIT | Status | Menu", "Global | GIT | Line | File | Menu", empty, mDoubleUpCommand
-      put the result into pArrayView   
-      set the displayed_ScriptObject of pArrayView to scriptObject
-      set the displayed_GitCheckoutFolder of pArrayView to gitCheckoutFolder
+      put the result into displayView   
+      set the displayed_ScriptObject of displayView to scriptObject
+      set the displayed_GitCheckoutFolder of displayView to gitCheckoutFolder
       
-      put the script of pArrayView into oScript
+      put the script of displayView into oScript
       put git_ConstructDisplayStatusScript() into someScript
       put oScript & CR & CR & someScript into newScript
-      set the script of pArrayView to newScript
+      set the script of displayView to newScript
    end if
-   return pArrayView
+   return displayView
 end display_GitStatusTable
 
 function git_ConstructDisplayStatusScript

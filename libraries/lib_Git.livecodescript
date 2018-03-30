@@ -30,6 +30,13 @@ end saveStackRequest
 
 --> Working On
 -
+function git_GetStatusArray gitCheckoutFolder
+   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
+   put git_ConstructStatusArray (gitStatusTable) into statusArray
+   array_StripEmptyKeys statusArray
+   return statusArray
+end git_GetStatusArray
+
 function git_GetRemoteAddress gitFolder
    put git_GetRemote (gitFolder) into shellResult
    --
