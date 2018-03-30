@@ -38,6 +38,10 @@ on menu_Init tObject
    put git_GetRemoteAddress (gitFolder) into remoteAddress
    put github_ListOrgRepos() into LocalArray ["lcwRepoNames"]
    put remoteAddress into LocalArray ["remoteAddress"]
+   
+   put _GetStatusArray() into statusArray
+   put statusArray into LocalArray ["statusArray"]
+   
    return true
 end menu_Init
 
@@ -204,12 +208,25 @@ getprop disabled_Pull
 end disabled_Pull
 
 getprop disabled_PushCurrentBranch
+   put LocalArray ["statusArray"] into statusArray
+   put statusArray ["Branch"] into branchArray
+   put "(use 'git push' to publish your local commits)" into pushLine
+   replace "'" with quote in pushLine
+   put the keys of branchArray into branchKeys
+   if pushLine is among the lines of branchKeys then
+      return false
+   else
+      return true
+   end if
+end disabled_PushCurrentBranch
+   
+getprop disabled_PushCurrentBranch
    return LocalArray ["_RemoteIsBad"]
 end disabled_PushCurrentBranch
 
 getprop disabled_AddAllUntracked
    if LocalArray ["gitIsActive"] is false then return true
-   put _FilesToAdd() into untrackedFiles -- too slow
+   put _FilesToAdd() into untrackedFiles
    if untrackedFiles is empty then
       return true
    else
@@ -219,6 +236,8 @@ end disabled_AddAllUntracked
 
 getprop disabled_StageThenCommit
    if LocalArray ["gitIsActive"] is false then return true
+   if _FilesToAdd() is not empty then return true
+   
    if _FilesToStageAndCommit() then
       return false
    else
@@ -230,13 +249,7 @@ end disabled_StageThenCommit
 --> Private
 -
 private function _FilesToStageAndCommit
-   put LocalArray ["gitDisplayView"] into gitDisplayView
-   if exists (gitDisplayView) is false then
-      -- slow
-      put _GitStatusArray () into statusArray
-   else
-      put the displayed_Array of gitDisplayView into statusArray
-   end if
+   put LocalArray ["statusArray"] into statusArray
    put statusArray ["Changes not staged for commit:"] into notStagedArray
    put statusArray ["Changes to be committed:"] into toCommitArray
    switch
@@ -249,40 +262,34 @@ private function _FilesToStageAndCommit
 end _FilesToStageAndCommit
 
 private function _FilesToCommit
-   put LocalArray ["gitDisplayView"] into gitDisplayView
-   if exists (gitDisplayView) is false then
-      -- slow
-      put _GitStatusArray () into statusArray
-   else
-      put the displayed_Array of gitDisplayView into statusArray
-   end if
+   put LocalArray ["statusArray"] into statusArray
    put statusArray ["Changes not staged for commit:"]["modified"] into modifiedFiles
    return modifiedFiles
 end _FilesToCommit
 
 private function _FilesToAdd
-   put LocalArray ["gitDisplayView"] into gitDisplayView
-   if exists (gitDisplayView) is false then
-      -- slow
-      put _GitStatusArray () into statusArray
-   else
-      put the displayed_Array of gitDisplayView into statusArray
-   end if
+   put LocalArray ["statusArray"] into statusArray
    put statusArray ["Untracked files:"]["files"] into untrackedFileList
    return untrackedFileList
 end _FilesToAdd
-
-private function _GitStatusArray
-   put LocalArray ["gitFolder"] into gitFolder
-   put git_GetStatusArray (gitFolder) into statusArray
-   return statusArray
-end _GitStatusArray
 
 private function _ExistsGitStatusDisplay projectName
    -- put display_FindView ("Git Status", projectName) into gitDisplayView
    put LocalArray ["gitDisplayView"] into gitDisplayView
    return exists (gitDisplayView)
 end _ExistsGitStatusDisplay
+
+private function _GetStatusArray
+   put LocalArray ["gitDisplayView"] into gitDisplayView
+   if exists (gitDisplayView) is false then
+      -- slow
+      put LocalArray ["gitFolder"] into gitFolder
+      put git_GetStatusArray (gitFolder) into statusArray
+   else
+      put the displayed_Array of gitDisplayView into statusArray
+   end if
+   return statusArray
+end _GetStatusArray
 
 private function _RemoteIsBad
    put LocalArray ["gitFolder"] into gitFolder
