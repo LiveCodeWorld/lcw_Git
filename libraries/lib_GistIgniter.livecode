@@ -36,10 +36,6 @@ command rig_LaunchGist shortFile, pGistType
    return the result
 end rig_LaunchGist
 
--- command rig_SaveControllerToLocalProject controllerScript, shortControllerFile
-
-end rig_SaveControllerToLocalProject
-
 
 --> revIgniter | Gist
 -

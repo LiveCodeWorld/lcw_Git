@@ -14,8 +14,8 @@ A library for interfacing with Gitter via GitHub APIv3.
 constant GitterApiStem = "https://api.gitter.im/v1/"
 
 function gitter_FetchMyRooms
-   -- curl -i -H "Accept: application/json" -H "Authorization: Bearer 6de5229ab216b137776afd3f0e0da393400f4481" 
-   -- "https://api.gitter.im/v1/user/54cfdaf2db8155e6700f5d5d/rooms"
+   -- curl -i -H "Accept: application/json" -H "Authorization: Bearer xxx" 
+   -- "https://api.gitter.im/v1/user/yyy/rooms"
    
    put gitter_MyUserID() into userID
    put "user/" & userID & "/rooms" into someCommand
@@ -24,7 +24,7 @@ function gitter_FetchMyRooms
 end gitter_FetchMyRooms
 
 function gitter_FetchMyUserArray
-   -- curl -i -H "Accept: application/json" -H "Authorization: Bearer 6de5229ab216b137776afd3f0e0da393400f4481" "https://api.gitter.im/v1/user"  
+   -- curl -i -H "Accept: application/json" -H "Authorization: Bearer xxx" "https://api.gitter.im/v1/user"  
    put gitter_RestfulGet ("user") into jsonResult
    return jsonResult
 end gitter_FetchMyUserArray

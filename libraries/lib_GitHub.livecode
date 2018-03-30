@@ -15,6 +15,21 @@ The gist library is seperate and moving forwards we wil create individual librar
 
 --> Working on
 -
+function script_GetHandlerMarkdown tObject, relativePath
+   put the revAvailableHandlers of tObject into handlerTable
+   sort numeric handlerTable by word 3 of each
+   repeat for each line someLine in handlerTable
+      --    - [G mobile_VerticalScroller](../blob/master/libraries/lib_MobileControls.livecodescript#L35-L42)
+      -- put word 1 of someLine into item 2 of shortHkey
+      -- put word 2 of someLine into item 1 of shortHkey
+      put word 3 of someLine +1 into startLineNum
+      put word 4 of someLine +1 into endLineNum
+      put "- [" & word 1 to 2 of someLine & "](../blob/master/" & relativePath & "#L" & startLineNum & "-L" & endLineNum & ")" & CR after mdLines
+   end repeat
+   delete char -1 of mdLines
+   return mdLines
+end script_GetHandlerMarkdown
+
 command github_CreateProject repoName, gitFolder, repoDescription
    -- First Create a new GitHub repo
    github_CreateOrgRepo repoName, repoDescription
@@ -125,21 +140,6 @@ function github_CreateStackWikiPage stackObject
    put merge (mkTemplate) into wikiMarkdown
    return wikiMarkdown
 end github_CreateStackWikiPage
-
-function script_GetHandlerMarkdown tObject, relativePath
-   put the revAvailableHandlers of tObject into handlerTable
-   sort numeric handlerTable by word 3 of each
-   repeat for each line someLine in handlerTable
-      --    - [G mobile_VerticalScroller](../blob/master/libraries/lib_MobileControls.livecodescript#L35-L42)
-      -- put word 1 of someLine into item 2 of shortHkey
-      -- put word 2 of someLine into item 1 of shortHkey
-      put word 3 of someLine +1 into startLineNum
-      put word 4 of someLine +1 into endLineNum
-      put "- [" & word 1 to 2 of someLine & "](../blob/master/" & relativePath & "#L" & startLineNum & "-L" & endLineNum & ")" & CR after mdLines
-   end repeat
-   delete char -1 of mdLines
-   return mdLines
-end script_GetHandlerMarkdown
 
 
 --> GitHub | Issues

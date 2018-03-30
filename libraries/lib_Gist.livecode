@@ -450,5 +450,3 @@ private function _cleanReceivedURL someURL
    if char -1 of someURL = ">" then delete char -1 of someURL
    return someURL
 end _cleanReceivedURL
-
-
