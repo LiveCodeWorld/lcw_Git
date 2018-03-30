@@ -17,25 +17,28 @@ on menu_Init tObject
    put displayView into LocalArray ["displayView"]
    put the title_Text of displayView into projectName
    put projectName into LocalArray ["projectName"]
+   if there is not a stack projectName then
+      breakpoint
+      return false
+   end if
    
    put display_FindView ("Git Status", projectName) into gitDisplayView
    put gitDisplayView into LocalArray ["gitDisplayView"]
    
-   put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
+   -- put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
+   put the git_CheckoutFolder of stack projectName into gitFolder
+   put the git_IsActive of stack projectName into gitIsActive
    
-   if there is a stack projectName then
-      put the git_CheckoutFolder of stack projectName into gitFolder
-      put the git_IsActive of stack projectName into gitIsActive
-      put git_GetRemoteAddress (gitFolder) into remoteAddress
-      
-      -- put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitFolder"]
-      put gitFolder into LocalArray ["gitFolder"]
-      put gitIsActive into LocalArray ["gitIsActive"]
-      put remoteAddress into LocalArray ["remoteAddress"]
-      put _RemoteIsBad() into LocalArray ["_RemoteIsBad"]
-   end if
+   -- put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitFolder"]
+   put gitFolder into LocalArray ["gitFolder"]
+   put gitIsActive into LocalArray ["gitIsActive"]
+   put _RemoteIsBad() into LocalArray ["_RemoteIsBad"]
    
+   -- slow ???
+   put git_GetRemoteAddress (gitFolder) into remoteAddress
    put github_ListOrgRepos() into LocalArray ["lcwRepoNames"]
+   put remoteAddress into LocalArray ["remoteAddress"]
+   return true
 end menu_Init
 
 
@@ -203,7 +206,13 @@ getprop disabled_PushCurrentBranch
 end disabled_PushCurrentBranch
 
 getprop disabled_AddAllUntracked
-   return LocalArray ["gitIsActive"] is false
+   if LocalArray ["gitIsActive"] is false then return true
+   put _FilesToAdd() into untrackedFiles -- too slow
+   if untrackedFiles is empty then
+      return true
+   else
+      return false
+   end if
 end disabled_AddAllUntracked
 
 getprop disabled_StageThenCommit
@@ -214,7 +223,15 @@ end disabled_StageThenCommit
 --> Private
 -
 private function _FilesToAdd
-   put _GitStatusArray () into statusArray
+   put LocalArray ["gitDisplayView"] into gitDisplayView
+   if exists (gitDisplayView) is false then
+      -- slow
+      put _GitStatusArray () into statusArray
+   else
+      put the displayed_Array of gitDisplayView into statusArray
+   end if
+   put statusArray ["Untracked files:"]["files"] into untrackedFileList
+   return untrackedFileList
 end _FilesToAdd
 
 private function _GitStatusArray

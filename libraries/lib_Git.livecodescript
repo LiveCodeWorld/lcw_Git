@@ -30,6 +30,22 @@ end saveStackRequest
 
 --> Working On
 -
+function git_ListUncomittedFiles gitFolder
+   put git_GetStatusArray (gitFolder) into statusArray
+   get statusArray ["Untracked files:"]["files"]
+   put keys(it) into untrackedFileList
+   -- sort untrackedFileList
+   return untrackedFileList
+end git_ListUncomittedFiles
+
+function git_ListUntrackedFiles gitFolder
+   put git_GetStatusArray (gitFolder) into statusArray
+   get statusArray ["Untracked files:"]["files"]
+   put keys(it) into untrackedFileList
+   -- sort untrackedFileList
+   return untrackedFileList
+end git_ListUntrackedFiles
+
 function git_GetStatusArray gitCheckoutFolder
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
    put git_ConstructStatusArray (gitStatusTable) into statusArray
