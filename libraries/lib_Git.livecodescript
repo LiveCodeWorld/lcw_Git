@@ -56,7 +56,10 @@ end git_GetRemoteAddress
 function git_GetRemote gitFolder
    -- show url of remote branch
    -- https://stackoverflow.com/questions/8816107/how-can-i-retrieve-the-remote-git-address-of-a-repo
-   
+   if gitFolder is empty then
+      breakpoint
+      return empty
+   end if
    put "git remote -v" into someShell
    put shell_ExecuteAtRoot (someShell, gitFolder) into shellResult
    return shellResult
@@ -65,8 +68,19 @@ end git_GetRemote
 command git_AddFolderToRemote gitFolder, gitRemoteAddress
    -- gitRemoteAddress = githubProjectArray ["ssh_url"] 
    git_AddRemoteOrigin gitRemoteAddress, gitFolder
+   put the result into shellResult
+   -- fatal: remote origin already exists.
+   if word 1 of shellResult = "fatal" then
+      breakpoint
+   end if
+   --
    git_PushFirstFolder gitFolder
-   return the result
+   put the result into pushResult
+   /*
+   error: src refspec master does not match any.
+   error: failed to push some refs to 'git@github.com:LiveCodeWorld/lcw_Media.git'
+   */
+   return pushResult
 end git_AddFolderToRemote
 
 command git_SetRemoteOrigin gitRemoteAddress, gitFolder
@@ -1214,6 +1228,18 @@ command git_DeleteFolder someFolder, pForce
    return shellResult
 end git_DeleteFolder
 
+command git_DeleteInvisibleRepoFolder gitFolder
+   put gitFolder & ".git" into invisibleRepoFolder
+   if there is not a folder invisibleRepoFolder then
+      breakpoint
+      return empty
+   end if
+   
+   breakpoint -- check it does not delete the whole project???
+   revDeleteFolder invisibleRepoFolder
+   return invisibleRepoFolder
+end git_DeleteInvisibleRepoFolder
+   
 function git_ScriptFile shortFileBit
    put git_GetRootFolder() into rootFolder
    return repository_ConstructScriptPath(shortFileBit, rootFolder)
@@ -1588,3 +1614,4 @@ private function autoCommitComment scriptObject, textLine
    put textLine after someSuggestion
    return someSuggestion
 end autoCommitComment
+

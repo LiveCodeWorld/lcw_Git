@@ -49,6 +49,10 @@ end mDoubleUp_GitLog
 
 --> Global | GIT | Status | Menu
 -
+on submenu_Init
+   return "Global | GIT | Init | Menu"
+end submenu_Init
+
 on submenu_Branch
    return "Global | GIT | Branch | Menu"
 end submenu_Branch
@@ -95,26 +99,6 @@ on menu_ListCommits
    put LocalArray ["gitFolder"] into gitFolder
    put git_ListCommitHashes (gitFolder)
 end menu_ListCommits
-
-on _
-end _
-
-on menu_DisplayRemote
-   put LocalArray ["gitFolder"] into gitFolder
-   put git_GetRemoteAddress (gitFolder)
-end menu_DisplayRemote
-
-on menu_FixRemote
-   breakpoint
-   put LocalArray ["gitFolder"] into gitFolder
-   put "git@github.com:LiveCodeWorld/lcw.git" into newRemoteAddress
-   put git_GetRemoteAddress (gitFolder) into oldRemoteAddress
-   --
-   put newRemoteAddress
-   put lcw_Ask ("Enter git remote address...", oldRemoteAddress)into gitRemoteAddress
-   git_SetRemoteOrigin gitRemoteAddress, projectFolder
-   put the result
-end menu_FixRemote
 
 on _
 end _
@@ -230,6 +214,23 @@ end git_ProjectNames
 
 --> Global | GIT | Status | Menu | Disabled
 -
+getprop disabled_Branch
+   put LocalArray ["gitFolder"] into gitFolder
+   if there is a folder gitFolder then
+      return false
+   else
+      return true
+   end if
+end disabled_Branch
+
+-- getprop disabled_Init
+put LocalArray ["gitFolder"] into gitFolder
+if there is a folder gitFolder then
+   return false
+else
+   return true
+end if
+end disabled_Init
 
 
 --> Private

@@ -52,13 +52,7 @@ end _executeGit
 
 private function _getCheckoutFolder
    put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   
-   -- could check here that the folder is versioned by git
-   if there is not a folder gitCheckoutFolder then
-      answer warning "Cannot locate git folder for this action!"
-      breakpoint
-      exit to top
-   end if
+   if there is not a folder gitCheckoutFolder then return empty
    return gitCheckoutFolder
 end _getCheckoutFolder
 
