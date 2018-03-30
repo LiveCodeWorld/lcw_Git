@@ -219,17 +219,35 @@ end disabled_AddAllUntracked
 
 getprop disabled_StageThenCommit
    if LocalArray ["gitIsActive"] is false then return true
-   put _FilesToCommit() into untrackedFiles -- too slow
-   if untrackedFiles is empty then
-      return true
-   else
+   if _FilesToStageAndCommit() then
       return false
+   else
+      return true
    end if
 end disabled_StageThenCommit
 
 
 --> Private
 -
+private function _FilesToStageAndCommit
+   put LocalArray ["gitDisplayView"] into gitDisplayView
+   if exists (gitDisplayView) is false then
+      -- slow
+      put _GitStatusArray () into statusArray
+   else
+      put the displayed_Array of gitDisplayView into statusArray
+   end if
+   put statusArray ["Changes not staged for commit:"] into notStagedArray
+   put statusArray ["Changes to be committed:"] into toCommitArray
+   switch
+      case notStagedArray is not empty
+      case toCommitArray is not empty
+         return true
+      default
+         return false
+   end switch
+end _FilesToStageAndCommit
+
 private function _FilesToCommit
    put LocalArray ["gitDisplayView"] into gitDisplayView
    if exists (gitDisplayView) is false then
