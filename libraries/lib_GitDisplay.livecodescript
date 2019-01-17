@@ -119,6 +119,25 @@ command git_RefreshDisplay pTreeTitle
 end git_RefreshDisplay
 
 
+--> Display | GIST
+-
+command display_Gists pHow
+   set the cursor to watch
+   switch pHow
+      case "Gist Controllers"
+         put gist_FetchFiles ("controller") into gistList
+         break
+      case "Gist Scripts"
+         put gist_FetchFiles() into gistList
+         filter gistList with "script,*"
+         break
+         put gist_FetchFiles() into gistList
+      default
+   end switch
+   display_Index gistList, "gist_FetchFiles(),Gists", "Global | Gist | Menu", "Global | Gist | Line | Menu", "gistMouseUp", "gistMouseDoubleUp"
+end display_Gists
+
+
 --> Display | GitHub
 -
 command display_GithubProjects
