@@ -5,27 +5,12 @@ name: lib_Git
 type: library
 copyright: David Bovill
 license: GPLv3
-version: 0.81
+version: 0.82
 
 /*
 A library for working with GIT.
 It has not been tested on unix (should work fine), or Windows machines (beware of line ending issues).
 */
-
-
---> Events
--
--- on saveStackRequest
-repeat for each line stackName in the openStacks
-   if word 1 to 2 of stackName = "Display Array" and the label of stack stackName = "Git Status" then
-      put the long id of group 1 of cd 1 of stack stackName into displayView
-      put the displayed_GitCheckoutFolder of displayView into gitCheckoutFolder
-      
-      send "display_GitFolderStatus gitCheckoutFolder" to displayView in 0 seconds -- so we save first 
-   end if
-end repeat
-pass saveStackRequest
-end saveStackRequest
 
 
 --> Working On
@@ -48,7 +33,7 @@ end git_ListUntrackedFiles
 
 function git_GetStatusArray gitCheckoutFolder
    if there is not a folder gitCheckoutFolder then
-      breakpoint
+      -- breakpoint
       return empty
    end if
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
@@ -57,6 +42,40 @@ function git_GetStatusArray gitCheckoutFolder
    return statusArray
 end git_GetStatusArray
 
+command git_DeleteFile someFile, pForce
+   /*
+   git rm Documentation/\*.txt
+         Removes all *.txt files from the index that are under the Documentation directory and any of its subdirectories.
+   
+   Note that the asterisk * is quoted from the shell in this example; this lets git, and not the shell, expand the pathnames of files and subdirectories under the Documentation/ directory.
+   
+   git rm -f git-*.sh
+   Because this example lets the shell expand the asterisk (i.e. you are listing the files explicitly), it does not remove subdir/git-foo.sh.
+   */
+   
+   if pForce is true then
+      put "git rm --force [[shortFile]]" into shellTemplate
+   else
+      put "git rm [[shortFile]]" into shellTemplate
+   end if
+   git_ExecuteMergedShell shellTemplate, someFile
+   put the result into shellResult
+   return shellResult
+   
+   if shellResult begins with "fatal: pathspec '" or shellResult begins with "error:" then
+      -- fatal: pathspec 'opn_Plugins/opn_Text/colour/swatch/Beach' did not match any files
+      -- assume it is untracked (could check before) ?
+      if there is a file someFile then
+         delete file someFile
+      end if
+      -- beep
+   end if
+   return shellResult
+end git_DeleteFile
+
+
+--> GIT | Remote
+-
 function git_GetRemoteAddress gitFolder
    put git_GetRemote (gitFolder) into shellResult
    --
@@ -84,7 +103,7 @@ function git_GetRemote gitFolder
    -- show url of remote branch
    -- https://stackoverflow.com/questions/8816107/how-can-i-retrieve-the-remote-git-address-of-a-repo
    if gitFolder is empty then
-      breakpoint
+      -- breakpoint
       return empty
    end if
    put "git remote -v" into someShell
@@ -128,37 +147,6 @@ command git_PushFirstFolder gitFolder
    git_ExecuteShell someShell, gitFolder
    return the result
 end git_PushFirstFolder
-
-command git_DeleteFile someFile, pForce
-   /*
-   git rm Documentation/\*.txt
-         Removes all *.txt files from the index that are under the Documentation directory and any of its subdirectories.
-   
-   Note that the asterisk * is quoted from the shell in this example; this lets git, and not the shell, expand the pathnames of files and subdirectories under the Documentation/ directory.
-   
-   git rm -f git-*.sh
-   Because this example lets the shell expand the asterisk (i.e. you are listing the files explicitly), it does not remove subdir/git-foo.sh.
-   */
-   
-   if pForce is true then
-      put "git rm --force [[shortFile]]" into shellTemplate
-   else
-      put "git rm [[shortFile]]" into shellTemplate
-   end if
-   git_ExecuteMergedShell shellTemplate, someFile
-   put the result into shellResult
-   return shellResult
-   
-   if shellResult begins with "fatal: pathspec '" or shellResult begins with "error:" then
-      -- fatal: pathspec 'opn_Plugins/opn_Text/colour/swatch/Beach' did not match any files
-      -- assume it is untracked (could check before) ?
-      if there is a file someFile then
-         delete file someFile
-      end if
-      -- beep
-   end if
-   return shellResult
-end git_DeleteFile
 
 
 --> GIT | List

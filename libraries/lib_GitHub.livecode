@@ -30,63 +30,54 @@ function script_GetHandlerMarkdown tObject, relativePath
    return mdLines
 end script_GetHandlerMarkdown
 
-command github_CreateProject repoName, gitFolder, repoDescription
-   -- First Create a new GitHub repo
-   github_CreateOrgRepo repoName, repoDescription
-   put the result into postJSON
-   put json_ToArray (postJSON) into githubProjectArray
-   put githubProjectArray ["ssh_url"] into gitRemoteAddress
-   
-   if oldRemoteAddress is not empty then
-      -- we will need to change it
-      put oldRemoteAddress
-      put lcw_Ask ("Are you sure you want to change the git remote address to...", gitRemoteAddress)into gitRemoteAddress
-      breakpoint
-      git_SetRemoteOrigin gitRemoteAddress, gitFolder
-      put the result into addResult
-   else
-      -- we need to add it
-      git_AddFolderToRemote gitFolder, gitRemoteAddress
-      put the result into addResult
-   end if
-end github_CreateProject
 
-function github_FetchReadmeMD githubProjectName
-   -- put github_FetchReadmeMD ("lcw_Menus") into readmeJSON
-   put "LiveCodeWorld" into orgName
-   put merge ("https://raw.githubusercontent.com/[[orgName]]/[[githubProjectName]]/master/README.md") into readmeURL
-   put url readmeURL into readmeMarkdown
-   return readmeMarkdown
-end github_FetchReadmeMD
+--> GitHub | Launch
+-
+command github_LaunchStack stackName
+   put github_ConstructLaunchUrl (stackName) into githubURL
+   launch url githubURL
+   return githubURL
+end github_LaunchStack
 
-command github_Launch repoName
-   put github_FetchRepoArray (repoName) into repoArray
-   put github_ExtractHtmlUrl (repoArray) into githubURL
+command github_Launch repoName, pPath
+   put github_LaunchUrl (repoName, pPath) into githubURL
    launch url githubURL
 end github_Launch
 
-command display_GithubProjects
-   put github_FetchOrgRepoAray() into reposArray
-   display_Array reposArray
-end display_GithubProjects
+function github_ConstructLaunchUrl stackName
+   if exists (stack stackName) is false then return empty
+   put the filename of stack stackName into stackPath
+   put the project_Name of stack stackPath into repoName
+   --
+   put github_LaunchUrl (repoName, stackPath) into githubURL
+   return githubURL
+end github_ConstructLaunchUrl
 
-command display_GitHubInfo repoName
+function github_LaunchUrl repoName, pPath
    put github_FetchRepoArray (repoName) into repoArray
-   display_Array repoArray
-end display_GitHubInfo
-
-function github_FindRepoName remoteAddress
-   -- can fail to find if repo has been renamed
-   put github_FetchOrgRepoAray() into reposArray
-   repeat for each key repoNum in reposArray
-      put reposArray [repoNum]["ssh_url"] into sshURL
-      put reposArray [repoNum]["clone_url"] into cloneURL
-      if sshURL = remoteAddress or cloneURL = remoteAddress then
-         return reposArray [repoNum]["name"]
+   put github_ExtractHtmlUrl (repoArray) into githubURL
+   --
+   if pPath is not empty then
+      -- blob/master/libraries/lib_GitHub.livecode
+      put "/blob/master/" after githubURL
+      if char 1 of pPath = "/" then
+         if exists (stack pPath) then
+            put the project_Folder of stack pPath into projectFolder
+            set the itemdelimiter to slash
+            put the number of items of projectFolder into firstItemNum
+            put pPath into relPath
+            delete item 1 to firstItemNum of relPath
+            --
+            put relPath after githubURL
+         else
+            return empty
+         end if
+      else
+         put pPath after githubURL
       end if
-   end repeat
-   return empty
-end github_FindRepoName
+   end if
+   return githubURL
+end github_LaunchUrl
 
 
 --> GitHub | Tokens
@@ -107,6 +98,54 @@ end github_GetApiToken
 command github_SetApiToken gitHubApiToken
    pref_SetValue "GitHubApiToken", gitHubApiToken
 end github_SetApiToken
+
+
+--> GitHub | Create
+-
+command github_CreateProject repoName, gitFolder, repoDescription
+   -- First Create a new GitHub repo
+   github_CreateOrgRepo repoName, repoDescription
+   put the result into postJSON
+   put json_ToArray (postJSON) into githubProjectArray
+   --
+   put githubProjectArray ["ssh_url"] into gitRemoteAddress
+   if gitRemoteAddress is empty then
+      breakpoint
+   end if
+   
+   -- we need to add gitRemoteAddress to local folder
+   git_AddFolderToRemote gitFolder, gitRemoteAddress
+   put the result into addResult
+   --
+   return githubProjectArray
+end github_CreateProject
+
+function github_FetchSshUrl repoName
+   put github_FetchRepoArray (repoName) into repoArray
+   put repoArray ["ssh_url"] into remoteSshUrl
+   return remoteSshUrl
+end github_FetchSshUrl
+
+function github_FetchReadmeMD githubProjectName
+   -- put github_FetchReadmeMD ("lcw_Menus") into readmeJSON
+   put "LiveCodeWorld" into orgName
+   put merge ("https://raw.githubusercontent.com/[[orgName]]/[[githubProjectName]]/master/README.md") into readmeURL
+   put url readmeURL into readmeMarkdown
+   return readmeMarkdown
+end github_FetchReadmeMD
+
+function github_FindRepoName remoteAddress
+   -- can fail to find if repo has been renamed
+   put github_FetchOrgRepoAray() into reposArray
+   repeat for each key repoNum in reposArray
+      put reposArray [repoNum]["ssh_url"] into sshURL
+      put reposArray [repoNum]["clone_url"] into cloneURL
+      if sshURL = remoteAddress or cloneURL = remoteAddress then
+         return reposArray [repoNum]["name"]
+      end if
+   end repeat
+   return empty
+end github_FindRepoName
 
 
 --> GitHub | Wiki
@@ -236,7 +275,7 @@ command github_DeconstructRepoArray repoArray, @remoteAddress, @htmlURL, @cloneU
    put repoArray ["html_url"] into htmlURL
    put repoArray ["ssh_url"] into remoteAddress
 end github_DeconstructRepoArray
-   
+
 function github_FetchOrgRepoAray pOrgName
    put github_FetchOrgRepoListJson (pOrgName) into someJSON
    put json_ToArray (someJSON) into reposArray
@@ -286,7 +325,7 @@ end github_RestGetFromUrl
 command github_RestPost restPath, postJSON
    _setAuthHeaders
    put _constructApiUrl (restPath) into someUrl
- 
+   
    post postJSON to url someUrl
    put it into postResult
    return postResult
@@ -359,9 +398,9 @@ end _setAuthHeaders
 command text_EscapeReturns @someText
    /*
    \r = CR (Carriage Return) // Used as a new line character in Mac OS before X
-   \n = LF (Line Feed) // Used as a new line character in Unix/Mac OS X
-   \r\n = CR + LF // Used as a new line character in Windows
-   */
+      \n = LF (Line Feed) // Used as a new line character in Unix/Mac OS X
+      \r\n = CR + LF // Used as a new line character in Windows
+      */
    -- replace CRLF with "\r\n" in someText
    replace CR with "\r" in someText
    replace LF with "\n" in someText

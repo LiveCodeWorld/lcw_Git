@@ -119,6 +119,134 @@ command git_RefreshDisplay pTreeTitle
 end git_RefreshDisplay
 
 
+--> Display | GitHub
+-
+command display_GithubProjects
+   put github_FetchOrgRepoAray() into reposArray
+   display_Array reposArray
+end display_GithubProjects
+
+command display_GitHubInfo repoName
+   put github_FetchRepoArray (repoName) into repoArray
+   display_Array repoArray
+end display_GitHubInfo
+
+
+--> Display | GIT | Stack
+-
+command display_StackHistory someObject
+   local logLinkArray
+   
+   put the stack_Object of someObject into stackObject
+   put the filename of stackObject into stackPath
+   put the git_CheckoutFolder of someObject into gitCheckoutFolder
+   
+   put git_GetFileLog (stackPath) into simpleLog
+   git_ProcessSimpleLogLines simpleLog, logArray, orderedCommentLines
+   
+   put "Stack Log for:" && the name of stackObject into someTitle
+   put comma & "GIT" after someTitle
+   put empty into pExpandLevel
+   
+   -- display_Array logArray, someTitle, "Global | Git | Stack | History | Menu", "Global | Git | Line | Stack | Log | Menu"
+   display_Index orderedCommentLines, someTitle, "Global | Git | Stack | History | Menu", "Global | Git | Line | Stack | Log | Menu"
+   put the result into indexView
+   
+   set the log_Array of indexView to logArray
+   set the displayed_Object of indexView to stackObject
+   set the displayed_File of indexView to stackPath
+   set the displayed_GitCheckoutFolder of indexView to gitCheckoutFolder
+   
+   return treeView
+end display_StackHistory
+
+
+--> Display | GIT
+-
+command display_GitStatus pScriptObject
+   if pScriptObject is empty then put the long id of the target into pScriptObject
+   put the git_CheckoutFolder of pScriptObject into gitCheckoutFolder
+   
+   display_GitFolderStatus gitCheckoutFolder
+   put the result into arrayView
+   return arrayView
+end display_GitStatus
+
+command display_GitProjectStatus projectName
+   put project_GetFolder (projectName) into projectFolder
+   if there is not a folder projectFolder then
+      if projectFolder is not empty then put projectFolder
+      answer warning merge ("Cannot locate a folder for project '[[projectName]]'!")
+      breakpoint
+      exit to top
+   end if
+   
+   display_GitFolderStatus projectFolder
+   put the result into displayView
+   return displayView
+end display_GitProjectStatus
+
+command display_GitFolderStatus gitCheckoutFolder
+   if there is not a folder gitCheckoutFolder then return empty
+   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
+   -- see "git_GetStatusArray (gitCheckoutFolder)"
+   --
+   display_GitStatusTable gitStatusTable, gitCheckoutFolder
+   put the result into arrayView
+   return arrayView
+end display_GitFolderStatus
+
+command display_GitStatusTable gitStatusTable, fileOrFolder
+   -- can be called from anywhere inside a git repo
+   put git_GetCheckoutFolder (fileOrFolder) into gitCheckoutFolder
+   
+   set the itemdelimiter to ":"
+   if item 1 of gitStatusTable = "fatal" then
+      -- fatal: Not a git repository (or any of the parent directories): .git
+      answer warning gitStatusTable
+      return empty
+   end if
+   
+   -- let's find an existing displayView if it exists
+   set the itemdelimiter to slash
+   put item -1 of gitCheckoutFolder into gitShortFolder
+   put display_FindView ("Git Status", gitShortFolder) into displayView
+   set the itemdelimiter to comma
+   
+   -- see "git_GetStatusArray (gitCheckoutFolder)"
+   put git_ConstructStatusArray (gitStatusTable) into statusArray
+   array_StripEmptyKeys statusArray
+   
+   if exists (displayView) then
+      set the displayed_Array of displayView to statusArray
+   else
+      put gitShortFolder && ",GIT Status" into someTitle
+      
+      put "mDoubleUp_DisplayGitFile" into mDoubleUpCommand
+      
+      display_Array statusArray, someTitle, "Global | GIT | Status | Menu", "Global | GIT | Line | File | Menu", empty, mDoubleUpCommand
+      put the result into displayView   
+      set the displayed_ScriptObject of displayView to scriptObject
+      set the displayed_GitCheckoutFolder of displayView to gitCheckoutFolder
+      
+      put the script of displayView into oScript
+      put display_GitStatusScript() into someScript
+      put oScript & CR & CR & someScript into newScript
+      set the script of displayView to newScript
+   end if
+   return displayView
+end display_GitStatusTable
+
+command git_DisplayStatusLines gitCheckoutFolder
+   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
+   set the itemdelimiter to slash
+   put item -1 of gitCheckoutFolder into gitShortFolder
+   put gitShortFolder & comma & "GIT Status" into someTitle
+   display_Index gitStatusTable, someTitle, "Global | GIT | Status | Menu"
+   return the result
+end git_DisplayStatusLines
+
+
 --> Git | Display | Stack
 -
 command git_DisplayTempStackRevision someObject, commitHash
@@ -194,83 +322,9 @@ command git_DisplayTempStackFromTreeish commitHash, pToFile
 end git_DisplayTempStackFromTreeish
 
 
---> Display | GIT | Status
+--> Display | GIT | Handlers
 -
-command display_GitStatus pScriptObject
-   if pScriptObject is empty then put the long id of the target into pScriptObject
-   put the git_CheckoutFolder of pScriptObject into gitCheckoutFolder
-   
-   display_GitFolderStatus gitCheckoutFolder
-   put the result into arrayView
-   return arrayView
-end display_GitStatus
-
-command display_GitProjectStatus projectName
-   put project_GetFolder (projectName) into projectFolder
-   if there is not a folder projectFolder then
-      if projectFolder is not empty then put projectFolder
-      answer warning merge ("Cannot locate a folder for project '[[projectName]]'!")
-      breakpoint
-      exit to top
-   end if
-   
-   display_GitFolderStatus projectFolder
-   put the result into displayView
-   return displayView
-end display_GitProjectStatus
-
-command display_GitFolderStatus gitCheckoutFolder
-   if there is not a folder gitCheckoutFolder then return empty
-   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
-   -- see "git_GetStatusArray (gitCheckoutFolder)"
-   --
-   display_GitStatusTable gitStatusTable, gitCheckoutFolder
-   put the result into arrayView
-   return arrayView
-end display_GitFolderStatus
-
-command display_GitStatusTable gitStatusTable, fileOrFolder
-   -- can be called from anywhere inside a git repo
-   put git_GetCheckoutFolder (fileOrFolder) into gitCheckoutFolder
-   
-   set the itemdelimiter to ":"
-   if item 1 of gitStatusTable = "fatal" then
-      -- fatal: Not a git repository (or any of the parent directories): .git
-      answer warning gitStatusTable
-      return empty
-   end if
-   
-   -- let's find an existing displayView if it exists
-   set the itemdelimiter to slash
-   put item -1 of gitCheckoutFolder into gitShortFolder
-   put display_FindView ("Git Status", gitShortFolder) into displayView
-   set the itemdelimiter to comma
-   
-   -- see "git_GetStatusArray (gitCheckoutFolder)"
-   put git_ConstructStatusArray (gitStatusTable) into statusArray
-   array_StripEmptyKeys statusArray
-   
-   if exists (displayView) then
-      set the displayed_Array of displayView to statusArray
-   else
-      put gitShortFolder && ",GIT Status" into someTitle
-      
-      put "mDoubleUp_DisplayGitFile" into mDoubleUpCommand
-      
-      display_Array statusArray, someTitle, "Global | GIT | Status | Menu", "Global | GIT | Line | File | Menu", empty, mDoubleUpCommand
-      put the result into displayView   
-      set the displayed_ScriptObject of displayView to scriptObject
-      set the displayed_GitCheckoutFolder of displayView to gitCheckoutFolder
-      
-      put the script of displayView into oScript
-      put git_ConstructDisplayStatusScript() into someScript
-      put oScript & CR & CR & someScript into newScript
-      set the script of displayView to newScript
-   end if
-   return displayView
-end display_GitStatusTable
-
-function git_ConstructDisplayStatusScript
+function display_GitStatusScript
    put "getprop menu_Title" into someScript
    put CR & "    if the kind of the target = 'com.livecode.widget.treeView' then return the git_StatusMenuTitle of the target" after someScript
    put CR & "    pass menu_Title" after someScript
@@ -279,45 +333,7 @@ function git_ConstructDisplayStatusScript
    -- for some reason  = 'com.livecode.widget.treeView'  does nto work
    replace "'" with quote in someScript
    return someScript
-end git_ConstructDisplayStatusScript
-
-command git_DisplayStatusLines gitCheckoutFolder
-   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
-   set the itemdelimiter to slash
-   put item -1 of gitCheckoutFolder into gitShortFolder
-   put gitShortFolder & comma & "GIT Status" into someTitle
-   display_Index gitStatusTable, someTitle, "Global | GIT | Status | Menu"
-   return the result
-end git_DisplayStatusLines
-
-
---> Display | GIT | Stack
--
-command display_StackHistory someObject
-   local logLinkArray
-   
-   put the stack_Object of someObject into stackObject
-   put the filename of stackObject into stackPath
-   put the git_CheckoutFolder of someObject into gitCheckoutFolder
-   
-   put git_GetFileLog (stackPath) into simpleLog
-   git_ProcessSimpleLogLines simpleLog, logArray, orderedCommentLines
-   
-   put "Stack Log for:" && the name of stackObject into someTitle
-   put comma & "GIT" after someTitle
-   put empty into pExpandLevel
-   
-   -- display_Array logArray, someTitle, "Global | Git | Stack | History | Menu", "Global | Git | Line | Stack | Log | Menu"
-   display_Index orderedCommentLines, someTitle, "Global | Git | Stack | History | Menu", "Global | Git | Line | Stack | Log | Menu"
-   put the result into indexView
-   
-   set the log_Array of indexView to logArray
-   set the displayed_Object of indexView to stackObject
-   set the displayed_File of indexView to stackPath
-   set the displayed_GitCheckoutFolder of indexView to gitCheckoutFolder
-   
-   return treeView
-end display_StackHistory
+end display_GitStatusScript
 
 function git_ConstructStatusArray gitStatusTable , pNoComments
    -- put line -1 of gitStatusTable into gitHint

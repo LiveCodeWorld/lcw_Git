@@ -74,6 +74,23 @@ on menu_InitialiseGit projectName
    end if
 end menu_InitialiseGit
 
+on menu_FixRemote
+   put LocalArray ["gitFolder"] into gitFolder
+   put _GitRemoteAddress() into oldRemoteAddress
+   --
+   put LocalArray ["projectName"] into projectName
+   put merge ("git@github.com:LiveCodeWorld/[[projectName]].git") into newRemoteAddress
+   put lcw_Ask ("Enter git remote address...", newRemoteAddress)into gitRemoteAddress
+   --
+   -- git_SetRemoteOrigin gitRemoteAddress, gitFolder
+   git_AddFolderToRemote gitFolder, gitRemoteAddress
+   put the result into shellResult
+   --
+   put shellResult
+   --
+   return shellResult
+end menu_FixRemote
+
 on _
 end _
 
@@ -100,12 +117,13 @@ on menu_CreateGithubProject
    -- let's create it
    put lcw_Ask ("Give the new repo a name..", projectName) into repoName
    put lcw_Ask ("Give repo a description...", "A project to interact with git and Github.") into repoDescription
+   
    breakpoint
    github_CreateProject repoName, gitFolder, repoDescription
-   put the result into createResult
-   
-   -- not set remote
-   menu_FixRemote projectName
+   put the result into githubProjectArray
+   -- 
+   put githubProjectArray ["ssh_url"] into remoteSshUrl
+   return remoteSshUrl
 end menu_CreateGithubProject
 
 on menu_LaunchGithub displayView, lcwRepo
@@ -113,11 +131,18 @@ on menu_LaunchGithub displayView, lcwRepo
    github_Launch lcwRepo
 end menu_LaunchGithub
 
--- on menu_LaunchGithub
-put LocalArray ["remoteAddress"] into remoteAddress
-put github_FindRepoName (remoteAddress) into repoName
-github_Launch repoName
-end menu_LaunchGithub
+on menu_DisplayGithubRepoArray
+   put LocalArray ["projectName"] into repoName
+   put github_FetchRepoArray (repoName) into repoArray
+   --
+   display_Array repoArray, repoName
+end menu_DisplayGithubRepoArray
+
+on menu_DisplayGithubOrgArray
+   put github_FetchOrgRepoAray() into reposArray
+   --
+   display_Array reposArray, "github_FetchOrgRepoAray()"
+end menu_DisplayGithubOrgArray
 
 on _
 end _
@@ -208,10 +233,11 @@ getprop disabled_DisplayRemote
 end disabled_DisplayRemote
 
 getprop disabled_FixRemote
-   if LocalArray ["gitIsActive"] is true then
+   put _gitRemoteAddress() into gitRemoteAddress
+   if gitRemoteAddress is empty then
       return false
    else
-      return "delete"
+      return "true"
    end if
 end disabled_FixRemote
 
@@ -277,21 +303,6 @@ on menu_GitStatus projectName
    display_GitProjectStatus projectName
 end menu_GitStatus
 
-on menu_FixRemote projectName
-   put LocalArray ["gitFolder"] into gitFolder
-   put merge ("git@github.com:LiveCodeWorld/[[projectName]].git") into newRemoteAddress
-   put git_GetRemoteAddress (gitFolder) into oldRemoteAddress
-   --
-   put oldRemoteAddress
-   put lcw_Ask ("Enter git remote address...", newRemoteAddress)into gitRemoteAddress
-   --
-   breakpoint
-   -- git_SetRemoteOrigin gitRemoteAddress, gitFolder
-   git_AddFolderToRemote gitFolder, gitRemoteAddress
-   put the result into shellResult
-   return shellResult
-end menu_FixRemote
-
 on menu_DisplayRemote
    put LocalArray ["gitFolder"] into gitFolder
    put git_GetRemoteAddress (gitFolder)
@@ -323,3 +334,12 @@ on menu_DeleteInvisibleGitFolder arrayView
    breakpoint -- be careful!
    git_DeleteInvisibleRepoFolder gitFolder
 end menu_DeleteInvisibleGitFolder
+
+
+--> Private
+-
+private function _gitRemoteAddress
+   put LocalArray ["gitFolder"] into gitFolder
+   put git_GetRemoteAddress (gitFolder) into oldRemoteAddress
+   return oldRemoteAddress
+end _gitRemoteAddress
