@@ -31,9 +31,9 @@ on menu_DisplayGitStatus scriptObject
    display_GitStatus scriptObject
 end menu_DisplayGitStatus
 
-on menu_DisplayScripts
+on menu_DisplayGistScripts
    display_Gists "Gist Scripts"
-end menu_DisplayScripts
+end menu_DisplayGistScripts
 
 on _
 end _
@@ -45,6 +45,34 @@ end submenu_Dev
 
 --> Global | GIT | Menu | Props
 -
+
+--> Global | GIT | Menu | Disabled
+-
+getprop disabled_Dev
+   -- utility that displays "Dev | Menu" only when the optionKey is down
+   if the optionKey is "Down" then
+      return false
+   else
+      return "delete"
+   end if
+end disabled_Dev
+
+getprop disabled_GitStatus [scriptObject]
+   if project_IsActive ("lcw_GIT") is true then
+      return false
+   else
+      return "delete"
+   end if 
+end disabled_GitStatus
+
+getprop disabled_LoadGit
+   if project_IsActive ("lcw_GIT") is true then
+      return "delete"
+   else
+      return false
+   end if 
+end disabled_LoadGit
+
 
 --> Dev | Menu
 -

@@ -21,6 +21,46 @@ end gistMouseDoubleUp
 
 --> Global | Gist | Menu
 -
+on menu_LaunchGist scriptObject
+   _SetControllerProps scriptObject, shortControllerFile, serverTLD, depLibs, localRigScript
+   rig_LaunchGist shortControllerFile
+   put the result into gistURL
+   if gistURL is empty then
+      answer warning "There is not gist yet for this file!" as sheet
+   end if
+end menu_LaunchGist
+
+on menu_SaveControllerAsGist scriptObject, remoteOrLocal
+   -- put the stack_Name of scriptObject into shortControllerFile
+   put the short name of scriptObject into shortControllerFile
+   --
+   _SetControllerProps scriptObject, shortControllerFile, serverTLD, depLibs, localRigScript
+   put rig_FetchController (shortControllerFile) into remoteRigScript
+   put merge ("This is Revigniter controller '[[shortControllerFile]]' from the domain '[[serverTLD]]'.") into mergeHelp
+   --
+   switch remoteOrLocal
+      case "local"
+         if localRigScript is not remoteRigScript then
+            answer "Do you want to save the local rigScript to RevIgniter?" with "Yes" or "No" as sheet
+            if it is "Yes" then
+               rig_StoreController shortControllerFile, localRigScript
+            end if
+         end if
+         put localRigScript into rigScript
+         break
+      case "remote"
+         put remoteRigScript into rigScript
+         break
+   end switch
+   --
+   rig_SaveControllerAsGist rigScript, shortControllerFile, serverTLD, mergeHelp
+   put the result into shortGistFile
+   gist_Launch shortGistFile
+end menu_SaveControllerAsGist
+
+on _
+end _
+
 on menu_DisplayGists
    display_Gists
 end menu_DisplayGists

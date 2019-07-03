@@ -14,9 +14,9 @@ local localArray
 
 --> Global | GIT | Project | Menu
 -
-on menu_SwitchGitProject projectName
+on menu_SwitchGitProject gitProjectName
    set the cursor to watch
-   git_SetProject projectName
+   git_SetProject gitProjectName
    git_RefreshDisplay true, "Git Status"
    -- display_Lines longGitFolder, "GIT root folder"
 end menu_SwitchGitProject
@@ -87,7 +87,7 @@ command git_AddAndSetGitFolder pGitFolder
    return pGitFolder
 end git_AddAndSetGitFolder
 
-getprop project_Name
+getprop git_ProjectName
    put git_GetRootFolder() into gitFolder
    if there is a folder gitFolder then
       set the itemDelimiter to "/"
@@ -95,9 +95,9 @@ getprop project_Name
    else
       return "(Error:" && gitFolder
    end if
-end project_Name
+end git_ProjectName
 
-getprop project_Names
+getprop git_ProjectNames
    put git_GetProjectArray() into gitProjectArray   
    repeat for each key gitFolder in gitProjectArray
       put gitProjectArray [gitFolder]["project name"] into projectName
@@ -114,7 +114,7 @@ getprop project_Names
    delete char -1 of projectNames
    sort projectNames
    return projectNames
-end project_Names
+end git_ProjectNames
 
 
 --> Dev | Menu

@@ -317,12 +317,6 @@ end menu_DisplayGithubInfo
 on _
 end _
 
-on menu_TestReadme
-   put fedwiki_GitHubReadmePageJson ("lcw_Menus") into readmeJSON
-   --
-   display_FedwikiPageJson readmeJSON
-end menu_TestReadme
-
 on menu_DeleteInvisibleGitFolder arrayView
    put LocalArray ["gitFolder"] into gitFolder
    -- put the title_Text of displayView into LocalArray ["shortFolder"]
