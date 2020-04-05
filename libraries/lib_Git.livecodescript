@@ -15,6 +15,20 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 
 --> Working On
 -
+command git_CheckoutOurs someFile
+   put "git checkout --theirs -- [[shortFile]]" into shellTemplate
+   git_ExecuteMergedShell shellTemplate, someFile
+   put the result into gitResult
+   return gitResult
+end git_CheckoutOurs
+
+command git_CheckoutTheirs someFile
+   put "git checkout --ours -- [[shortFile]]" into shellTemplate
+   git_ExecuteMergedShell shellTemplate, someFile
+   put the result into gitResult
+   return gitResult
+end git_CheckoutTheirs
+
 function git_ListModifiedFiles gitFolder
    put git_GetStatusArray (gitFolder) into statusArray
    get statusArray ["Changes not staged for commit:"]["modified"]

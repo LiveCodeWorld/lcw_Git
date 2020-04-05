@@ -7,6 +7,21 @@ type: controller
 version: 0.3
 
 
+--> Where?
+-
+private function _FilesToCommit
+   put LocalArray ["statusArray"] into statusArray
+   put statusArray ["Changes not staged for commit:"]["modified"] into modifiedFiles
+   return modifiedFiles
+end _FilesToCommit
+
+private function _IsGitStatusDisplay
+   put LocalArray ["displayView"] into displayView
+   put LocalArray ["projectName"] into projectName
+   return _ExistsGitStatusDisplay (projectName)
+end _IsGitStatusDisplay
+
+
 --> Menu | Props
 -
 local LocalArray
@@ -104,56 +119,9 @@ getprop disabled_StageThenCommit
    end if
 end disabled_StageThenCommit
 
-private function _CheckDisplayView tObject
-   -- let's check we are working with an indexView
-   put the view_Object of tObject into displayView
-   if exists (displayView) is false then return empty
-   
-   put displayView into LocalArray ["displayView"]
-   return displayView
-end _CheckDisplayView
-
-private command _LoadGitDisplayView projectName
-   put display_FindView ("Git Status", projectName) into gitDisplayView
-   put gitDisplayView into LocalArray ["gitDisplayView"]
-   return gitDisplayView
-end _LoadGitDisplayView
-
-private function _CheckProjectName displayView
-   -- check LCW project
-   put the title_Text of displayView into projectName
-   if there is a stack projectName then
-      put projectName into LocalArray ["projectName"]
-      return projectName
-   else
-      put empty into LocalArray ["projectName"]
-      return empty
-   end if
-end _CheckProjectName
-
-private function _RemoteIsBad
-   put LocalArray ["gitFolder"] into gitFolder
-   put git_GetRemoteAddress (gitFolder) into remoteAddress
-   
-   switch
-      case there is not a folder gitFolder
-         return true
-      case remoteAddress begins with "git@github.com:LiveCodeWorld/"
-         return false
-      default
-         -- remote address is not a LiveCodeWorld project
-         -- disabling for safety (this is not a generic git tool)
-         return true
-   end switch
-end _RemoteIsBad
-
 
 --> Global | GIT | Basics | Menu
 -
-on menu_Test
-   put mArray_GetActiveMenuController ("Global | GIT | Basics | Menu")
-end menu_Test
-
 on menu_DisplayGitStatus
    put LocalArray ["gitFolder"] into gitFolder
    --
@@ -161,10 +129,10 @@ on menu_DisplayGitStatus
    display_GitFolderStatus gitFolder
 end menu_DisplayGitStatus
 
-on menu_RefreshDisplay
+on menu_SaveAndRefresh
    stack_SaveEdited "all"
    _RefreshGitStatus
-end menu_RefreshDisplay
+end menu_SaveAndRefresh
 
 on menu_Pull
    put LocalArray ["gitFolder"] into gitFolder
@@ -292,12 +260,6 @@ private function _FilesToStageAndCommit
    end switch
 end _FilesToStageAndCommit
 
-private function _FilesToCommit
-   put LocalArray ["statusArray"] into statusArray
-   put statusArray ["Changes not staged for commit:"]["modified"] into modifiedFiles
-   return modifiedFiles
-end _FilesToCommit
-
 private function _FilesToAdd
    put LocalArray ["statusArray"] into statusArray
    put statusArray ["Untracked files:"]["files"] into untrackedFileList
@@ -322,13 +284,50 @@ private function _GetStatusArray
    return statusArray
 end _GetStatusArray
 
-private function _IsGitStatusDisplay
-   put LocalArray ["displayView"] into displayView
-   put LocalArray ["projectName"] into projectName
-   return _ExistsGitStatusDisplay (projectName)
-end _IsGitStatusDisplay
-
 private command _RefreshGitStatus
    put LocalArray ["projectName"] into projectName
    display_GitRefresh projectName
 end _RefreshGitStatus
+
+private function _CheckDisplayView tObject
+   -- let's check we are working with an indexView
+   put the view_Object of tObject into displayView
+   if exists (displayView) is false then return empty
+   
+   put displayView into LocalArray ["displayView"]
+   return displayView
+end _CheckDisplayView
+
+private command _LoadGitDisplayView projectName
+   put display_FindView ("Git Status", projectName) into gitDisplayView
+   put gitDisplayView into LocalArray ["gitDisplayView"]
+   return gitDisplayView
+end _LoadGitDisplayView
+
+private function _CheckProjectName displayView
+   -- check LCW project
+   put the title_Text of displayView into projectName
+   if there is a stack projectName then
+      put projectName into LocalArray ["projectName"]
+      return projectName
+   else
+      put empty into LocalArray ["projectName"]
+      return empty
+   end if
+end _CheckProjectName
+
+private function _RemoteIsBad
+   put LocalArray ["gitFolder"] into gitFolder
+   put git_GetRemoteAddress (gitFolder) into remoteAddress
+   
+   switch
+      case there is not a folder gitFolder
+         return true
+      case remoteAddress begins with "git@github.com:LiveCodeWorld/"
+         return false
+      default
+         -- remote address is not a LiveCodeWorld project
+         -- disabling for safety (this is not a generic git tool)
+         return true
+   end switch
+end _RemoteIsBad

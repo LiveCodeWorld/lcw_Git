@@ -42,7 +42,6 @@ getprop git_StatusMenuTitle
       case someBoolean
          return mTitle
       default
-         put mTitle
          put the line_Menu of tObject into mTitle
          return mTitle
    end switch
