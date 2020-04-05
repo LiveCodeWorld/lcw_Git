@@ -1,4 +1,4 @@
-﻿script "Global_Git_Stack_History_Menu"
+﻿script "Global | Git | Stack | History | Menu"
 --> MetaData
 -
 license: GPLv3

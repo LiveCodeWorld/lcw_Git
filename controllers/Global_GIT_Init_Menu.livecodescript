@@ -4,7 +4,7 @@
 license: GPLv3
 name: Global_GIT_Init_Menu
 type: controller
-version: 0.1
+version: 0.2
 
 /*
 This menu is for project displays. Typically an ndex_View with then menu_Target set to the project_Name.
@@ -18,24 +18,27 @@ This menu is for project displays. Typically an ndex_View with then menu_Target 
 local LocalArray
 
 on menu_Init tObject
-   -- put the display_View of tObject into displayView
    put the view_Object of tObject into displayView
+   put "LivecodeWorld" into LocalArray ["orgName"]
    
    put displayView into LocalArray ["displayView"]
    put the title_Text of displayView into projectName
-   put project_FolderFromName (projectName) into projectFolder
+   put the displayed_GitCheckoutFolder of displayView into gitCheckoutFolder
+   put gitCheckoutFolder into projectFolder
+   --
+   put git_GetActiveStatus (gitFolder) into someBoolean
+   put git_GetRemoteAddress (projectFolder) into remoteAddress
+   --
+   /*
+   put the project_Folder of stack projectName into projectFolder
+   put the git_CheckoutFolder of stack projectName into gitFolder
+   -- put project_FolderFromName (projectName) into projectFolder
    -- put project_GetFolder (projectName) into gitRootFolder
-   
-   if there is a stack projectName then
-      put the git_CheckoutFolder of stack projectName into gitFolder
-      -- put there is a folder gitCheckoutFolder into gitIsActive
-      put the git_IsActive of stack projectName into gitIsActive
-      put gitIsActive into LocalArray ["gitIsActive"]
-      put git_GetRemoteAddress (projectFolder) into remoteAddress
-   end if
-   
+   */
+   --
    put projectName into LocalArray ["projectName"]
    put projectFolder into LocalArray ["projectFolder"] -- should be the same as gitFolder
+   put gitIsActive into LocalArray ["gitIsActive"]
    put remoteAddress into LocalArray ["remoteAddress"]
    put gitFolder into LocalArray ["gitFolder"]
    
@@ -51,163 +54,12 @@ on menu_Init tObject
    put gitHubRepoExists into LocalArray ["gitHubRepoExists"]
 end menu_Init
 
--- getprop menu_CheckTarget [projectName]
-return true
-end menu_CheckTarget
-
-
---> Global | GIT | Init | Menu
--
-on menu_InitialiseGit projectName
-   put LocalArray ["displayView"] into displayView
-   put LocalArray ["projectFolder"] into projectFolder
+getprop menu_Target [displayObject]
+   -- not called in subMenus ()so not using)
    put LocalArray ["projectName"] into projectName
-   --
-   put merge ("Are you sure you want to initialise the project '[[projectName]]' with a git repo?") into someQuestion
-   dispatch "lcw_AnswerSheet" to displayView with someQuestion
-   --
-   git_InitFolder projectFolder
-   put the result into testGitRootFolder
-   --
-   if testGitRootFolder is not projectFolder then
-      breakpoint
-   end if
-end menu_InitialiseGit
+   return projectName
+end menu_Target
 
-on menu_FixRemote
-   put LocalArray ["gitFolder"] into gitFolder
-   put _GitRemoteAddress() into oldRemoteAddress
-   --
-   put LocalArray ["projectName"] into projectName
-   put merge ("git@github.com:LiveCodeWorld/[[projectName]].git") into newRemoteAddress
-   put lcw_Ask ("Enter git remote address...", newRemoteAddress)into gitRemoteAddress
-   --
-   -- git_SetRemoteOrigin gitRemoteAddress, gitFolder
-   git_AddFolderToRemote gitFolder, gitRemoteAddress
-   put the result into shellResult
-   --
-   put shellResult
-   --
-   return shellResult
-end menu_FixRemote
-
-on _
-end _
-
-on menu_CreateGithubProject
-   put LocalArray ["lcwRepoNames"] into lcwRepoNames
-   put LocalArray ["projectName"] into projectName   -- "lcw_Git"
-   put LocalArray ["gitFolder"] into gitFolder
-   
-   -- let's check to see if GitHub repo exists (Should be disabled)
-   if projectName is among the lines of lcwRepoNames then
-      answer warning "LiveCodeWorld repository already exists!"
-      exit to top
-   end if
-   
-   -- check to see if remote address already exists
-   put git_GetRemoteAddress (gitFolder) into oldRemoteAddress
-   if oldRemoteAddress begins with "git@github.com:LiveCodeWorld/" then
-      -- not sure what to do???
-      put oldRemoteAddress
-      answer warning "LiveCodeWorld repository is already linked but remote repo does not exist! Unlink it first?"
-      exit to top
-   end if
-   
-   -- let's create it
-   put lcw_Ask ("Give the new repo a name..", projectName) into repoName
-   put lcw_Ask ("Give repo a description...", "A project to interact with git and Github.") into repoDescription
-   
-   breakpoint
-   github_CreateProject repoName, gitFolder, repoDescription
-   put the result into githubProjectArray
-   -- 
-   put githubProjectArray ["ssh_url"] into remoteSshUrl
-   return remoteSshUrl
-end menu_CreateGithubProject
-
-on menu_LaunchGithub displayView, lcwRepo
-   -- put LocalArray ["shortFolder"] into lcwRepo -- lazy
-   github_Launch lcwRepo
-end menu_LaunchGithub
-
-on menu_DisplayGithubRepoArray
-   put LocalArray ["projectName"] into repoName
-   put github_FetchRepoArray (repoName) into repoArray
-   --
-   display_Array repoArray, repoName
-end menu_DisplayGithubRepoArray
-
-on menu_DisplayGithubOrgArray
-   put github_FetchOrgRepoAray() into reposArray
-   --
-   display_Array reposArray, "github_FetchOrgRepoAray()"
-end menu_DisplayGithubOrgArray
-
-on _
-end _
-
-on menu_AddProjectWiki projectName
-   put projectName & ".wiki" into wikiProjectName
-   
-   answer folder "Select a folder containing a project..."
-   put it into projectFolder
-   if it is empty then exit to top
-   if projectFolder ends with ".wiki" is false then
-      answer warning "Not a GitHub wiki project"
-      exit to top
-   end if
-   
-   put projectFolder into projectArray ["projectFolder"]
-   put "wiki" into projectArray ["projectType"]
-   library_StoreProjectArray wikiProjectName, projectArray
-   
-   display_LcwProjectList
-end menu_AddProjectWiki
-
-on menu_CreateLibraryPages projectName
-   -- put projectName & ".wiki" into wikiProjectName
-   -- put library_FetchProjectFolder (wikiProjectName) into wikiFolder
-   put LocalArray ["wikiFolder"] into wikiFolder
-   put LocalArray ["displayView"] into displayView
-   put the view_Index of displayView into stackNames
-   repeat for each line stackName in stackNames
-      put wikiFolder & stackName & ".md" into wikiPageFile
-      if there is a file wikiPageFile then
-         breakpoint
-      else
-         put the github_WikiPage of stack stackName into wikiMarkdown
-         put "file:" & wikiPageFile into someURL
-         put wikiMarkdown into url someURL
-      end if
-   end repeat
-end menu_CreateLibraryPages
-
-on _
-end _
-
-on submenu_Dev
-   return "Dev | Menu"
-end submenu_Dev
-
-
-
---> Global | GIT | Init | Menu | Props
--
-getprop lcw_Repo
-   put LocalArray ["projectName"] into repoName -- lazy
-   return repoName
-end lcw_Repo
-
-getprop lcw_Repos
-   put LocalArray ["lcwRepoNames"] into lcwRepoNames
-   sort lcwRepoNames
-   return lcwRepoNames
-end lcw_Repos
-
-
---> Global | GIT | Init | Menu | Disabled
--
 getprop disabled_InitialiseGit
    if LocalArray ["gitIsActive"] is true then
       return "delete"
@@ -297,19 +149,123 @@ getprop disabled_CreateLibraryPages [projectName]
 end disabled_CreateLibraryPages
 
 
+--> Events
+-
+on mouseDoubleUp_GitHub indexView, lcwRepoName
+   put LocalArray ["orgName"] into orgName
+   github_Launch lcwRepoName
+end mouseDoubleUp_GitHub
+
+
+--> Global | GIT | Init | Menu
+-
+on menu_RefreshDisplay 
+   put LocalArray ["projectName"] into projectName
+   display_GitRefresh projectName
+end menu_RefreshDisplay
+
+on _
+end _
+
+on menu_InitialiseGit
+   put LocalArray ["projectName"] into projectName
+   put LocalArray ["displayView"] into displayView
+   put LocalArray ["projectFolder"] into projectFolder
+   --
+   put merge ("Are you sure you want to initialise the project '[[projectName]]' with a git repo?") into someQuestion
+   dispatch "lcw_AnswerSheet" to displayView with someQuestion
+   --
+   git_InitFolder projectFolder
+   put the result into testGitRootFolder
+   --
+   if testGitRootFolder is not projectFolder then
+      breakpoint
+   end if
+end menu_InitialiseGit
+
+on menu_FixRemote
+   put LocalArray ["projectName"] into projectName
+   put LocalArray ["gitFolder"] into gitFolder
+   --
+   put _GitRemoteAddress() into oldRemoteAddress
+   --
+   put merge ("git@github.com:LiveCodeWorld/[[projectName]].git") into newRemoteAddress
+   put lcw_Ask ("Enter git remote address...", newRemoteAddress)into gitRemoteAddress
+   --
+   -- git_SetRemoteOrigin gitRemoteAddress, gitFolder
+   git_AddFolderToRemote gitFolder, gitRemoteAddress
+   put the result into shellResult
+   --
+   put shellResult
+   --
+   return shellResult
+end menu_FixRemote
+
+on _
+end _
+
+on menu_CreateGithubProject
+   put LocalArray ["projectName"] into projectName   -- "lcw_Git"
+   put LocalArray ["lcwRepoNames"] into lcwRepoNames
+   put LocalArray ["gitFolder"] into gitFolder
+   
+   -- let's check to see if GitHub repo exists (Should be disabled)
+   if projectName is among the lines of lcwRepoNames then
+      answer warning "LiveCodeWorld repository already exists!"
+      exit to top
+   end if
+   
+   -- check to see if remote address already exists
+   put git_GetRemoteAddress (gitFolder) into oldRemoteAddress
+   if oldRemoteAddress begins with "git@github.com:LiveCodeWorld/" then
+      -- not sure what to do???
+      put oldRemoteAddress
+      answer warning "LiveCodeWorld repository is already linked but remote repo does not exist! Unlink it first?"
+      exit to top
+   end if
+   
+   -- let's create it
+   put lcw_Ask ("Give the new repo a name..", projectName) into repoName
+   put lcw_Ask ("Give repo a description...", "A project to interact with git and Github.") into repoDescription
+   
+   breakpoint
+   github_CreateProject repoName, gitFolder, repoDescription
+   put the result into githubProjectArray
+   -- 
+   put githubProjectArray ["ssh_url"] into remoteSshUrl
+   return remoteSshUrl
+end menu_CreateGithubProject
+
+on menu_DisplayGithubProjects
+   put LocalArray ["orgName"] into orgName
+   --
+   put github_ListOrgRepos (orgName) into lcwRepoNames
+   --
+   display_Lines lcwRepoNames, orgName, "mouseDoubleUp_GitHub", "Github Repos", pPalette
+   put the result into displayView
+   set the title_Menu of displayView to "Global | Github | Menu"
+end menu_DisplayGithubProjects
+
+
+on _
+end _
+
+on submenu_Dev
+   return "Dev | Menu"
+end submenu_Dev
+
+
 --> Dev | Menu
 -
-on menu_GitStatus projectName
-   display_GitProjectStatus projectName
-end menu_GitStatus
-
 on menu_DisplayRemote
    put LocalArray ["gitFolder"] into gitFolder
+   --
    put git_GetRemoteAddress (gitFolder)
 end menu_DisplayRemote
 
 on menu_DisplayGithubInfo
    put LocalArray ["remoteAddress"] into remoteAddress
+   --
    put github_FindRepoName (remoteAddress) into repoName
    display_GitHubInfo repoName
 end menu_DisplayGithubInfo
@@ -319,7 +275,7 @@ end _
 
 on menu_DeleteInvisibleGitFolder arrayView
    put LocalArray ["gitFolder"] into gitFolder
-   -- put the title_Text of displayView into LocalArray ["shortFolder"]
+   --
    set the itemdelimiter to slash
    put item -1 of gitFolder into projectName
    put merge ("Are you sure you want to remove the local git repository and all it's history of file changes from the local project '[[projectName]]'?") into someQuestion

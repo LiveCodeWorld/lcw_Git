@@ -1,4 +1,4 @@
-﻿script "Global_GIT_Unmerged Paths_Menu"
+﻿script "Global | GIT | Unmerged paths | Deleted by us | File | Menu"
 --> MetaData
 -
 license: GPLv3

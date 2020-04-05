@@ -9,15 +9,20 @@ version: 0.1
 
 --> Props
 -
-getprop git_IsActive [pDontUseGit]
+getprop git_IsActive
    put the effective filename of the stack_Object of the target into someFile
-   if pDontUseGit is true then
-      put git_FindDotGitFolder (someFile) into checkoutFolder -- slightly faster (2 ticks)
-   else
-      put git_GetCheckoutFolder (someFile) into checkoutFolder -- uses GIT to check things (3 ticks)
-   end if
-   return checkoutFolder is not empty
+   put git_GetActiveStatus (someFile) into someBoolean
+   return someBoolean
 end git_IsActive
+
+function git_GetActiveStatus someFile
+   -- put git_FindDotGitFolder (someFile) into checkoutFolder -- slightly faster (2 ticks)
+   --
+   put git_GetCheckoutFolder (someFile) into checkoutFolder -- uses GIT to check things (3 ticks)
+   put checkoutFolder is not empty into someBoolean
+   --
+   return checkoutFolder is not empty
+end git_GetActiveStatus
 
 getprop git_WithinCheckoutFolder [pDontUseGit]
    -- checks the script file ???

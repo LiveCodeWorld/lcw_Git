@@ -19,6 +19,35 @@ command gistMouseDoubleUp indexView, someLine
 end gistMouseDoubleUp
 
 
+--> Menu | Props
+-
+getprop menu_CheckTarget [scriptObject]
+   return exists (scriptObject)
+end menu_CheckTarget
+
+getprop launch_Whats
+   return "My Gists,API"
+end launch_Whats
+
+getprop disabled_SaveControllerAsGist [scriptObject]
+   put the short_ControllerFile of scriptObject into shortControllerFile
+   if shortControllerFile is empty then
+      return true
+   else
+      return false
+   end if
+end disabled_SaveControllerAsGist
+
+getprop disabled_ScriptOnlyStackAsGist [scriptObject]
+   put the script_MetaData ["type"] of scriptObject into scriptType
+   if scriptType contains "library" then
+      return false
+   else
+      return true
+   end if
+end disabled_ScriptOnlyStackAsGist
+
+
 --> Global | Gist | Menu
 -
 on menu_LaunchGist scriptObject
@@ -129,34 +158,6 @@ on submenu_Dev
 end submenu_Dev
 
 
---> Global | Gist | Menu | Props
--
-getprop launch_Whats
-   return "My Gists,API"
-end launch_Whats
-
-
---> Global | Gist | Menu | Disables
--
-getprop disabled_SaveControllerAsGist [scriptObject]
-   put the short_ControllerFile of scriptObject into shortControllerFile
-   if shortControllerFile is empty then
-      return true
-   else
-      return false
-   end if
-end disabled_SaveControllerAsGist
-
-getprop disabled_ScriptOnlyStackAsGist [scriptObject]
-   put the script_MetaData ["type"] of scriptObject into scriptType
-   if scriptType contains "library" then
-      return false
-   else
-      return true
-   end if
-end disabled_ScriptOnlyStackAsGist
-   
-   
 --> Dev | Menu
 -
 on menu_SetGithubApiToken

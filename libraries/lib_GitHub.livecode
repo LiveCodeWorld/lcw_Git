@@ -29,9 +29,11 @@ getprop github_HandlerURL [shortHkey]
 end github_HandlerURL
 
 getprop github_RelativePath
-   put the long id of the target into sObject
+   put the stack_Object of the target into sObject
    set the itemdelimiter to slash
-   put item (the number of items of the engine folder + 2) to -1 of the filename of sObject into relPath
+   put the number of items of the engine folder + 2 into sNum
+   get the filename of sObject
+   put item sNum  to -1 of it into relPath
    return relPath
 end github_RelativePath
 
@@ -43,7 +45,7 @@ getprop github_LaunchURL
    put the project_Name of stack stackName into projectName
    put the filename of stack stackName into stackPath
    
-   put github_LaunchUrl (projectName, stackPath, scriptType, stackName) into githubURL
+   put github_GetLaunchUrl (projectName, stackPath, scriptType, stackName) into githubURL
    return githubURL
 end github_LaunchURL
 
@@ -67,11 +69,11 @@ function github_ConstructLaunchUrl stackName
    put the project_Name of stack stackPath into repoName
    put the script_Type of tObject into scriptType
    --
-   put github_LaunchUrl (repoName, stackPath, scriptType, stackName) into githubURL
+   put github_GetLaunchUrl (repoName, stackPath, scriptType, stackName) into githubURL
    return githubURL
 end github_ConstructLaunchUrl
 
-function github_LaunchUrl repoName, pPath, scriptType, stackName
+function github_GetLaunchUrl repoName, pPath, scriptType, stackName
    put github_FetchRepoArray (repoName) into repoArray
    put github_ExtractHtmlUrl (repoArray) into githubURL
    if pPath is empty then
@@ -96,7 +98,7 @@ function github_LaunchUrl repoName, pPath, scriptType, stackName
    put relPath after githubURL
    --
    return githubURL
-end github_LaunchUrl
+end github_GetLaunchUrl
 
 private function _MakeStackPathRelative pPath
    if char 1 of pPath is not "/" then
@@ -142,7 +144,7 @@ command github_LaunchStack stackName
 end github_LaunchStack
 
 command github_Launch repoName, pPath
-   put github_LaunchUrl (repoName, pPath) into githubURL
+   put github_GetLaunchUrl (repoName, pPath) into githubURL
    launch url githubURL
 end github_Launch
 

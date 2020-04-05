@@ -1,4 +1,4 @@
-﻿script "Global_GIT_Untracked Files_Menu"
+﻿script "Global | GIT | Untracked files | Files | Menu"
 --> MetaData
 -
 license: GPLv3

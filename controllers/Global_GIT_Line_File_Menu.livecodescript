@@ -2,7 +2,7 @@
 --> MetaData
 -
 license: GPLv3
-name: Global_GIT_Line_File_Menu
+name: Global | GIT | Line | File | Menu
 type: controller
 version: 0.2
 
@@ -25,9 +25,45 @@ on menu_Init tObject
    put the displayed_Array of displayView into LocalArray ["displayedArray"]
 end menu_Init
 
-getprop menu_Target [mTiltlePath]
-   pass menu_Target
-end menu_Target
+command git_CheckoutOurs someFile
+   put "git checkout --theirs -- [[shortFile]]" into shellTemplate
+   git_ExecuteMergedShell shellTemplate, someFile
+   put the result into gitResult
+   return gitResult
+end git_CheckoutOurs
+
+command git_CheckoutTheirs someFile
+   put "git checkout --ours -- [[shortFile]]" into shellTemplate
+   git_ExecuteMergedShell shellTemplate, someFile
+   put the result into gitResult
+   return gitResult
+end git_CheckoutTheirs
+
+-- getprop disabled_RevertToLastCommit [arrayView]
+put the hilited_Element of arrayView into pathItems
+if LocalArray ["topKey"] = "Branch" or the number of items of pathItems < 3 then
+   return "delete"
+else
+   return false
+end if
+end disabled_RevertToLastCommit
+
+getprop disabled_SwitchBranch [arrayView]
+   if LocalArray ["topKey"] = "Branch" then
+      return false
+   else
+      return "delete"
+   end if
+end disabled_SwitchBranch
+
+getprop disabled_EditScript [arrayView]
+   put _getFile (arrayView) into someFile
+   if exists (stack someFile) then
+      return false
+   else
+      return true
+   end if
+end disabled_EditScript
 
 
 --> Private
@@ -46,329 +82,6 @@ private function _getFile arrayView
 end _getFile
 
 
---> Global | GIT | Branch | File | Menu
--
-on menu_TestBranch arrayView
-   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   put "git branch" into someShell
-   put git_ExecuteShellCommand (someShell, gitCheckoutFolder) into branchNames
-   put branchNames
-end menu_TestBranch
-
-on _
-end _
-
-on submenu_Branch
-   return "Global | GIT | Branch | Menu"
-end submenu_Branch
-
-
-
-command git_CheckoutOurs someFile
-   put "git checkout --theirs -- [[shortFile]]" into shellTemplate
-   git_ExecuteMergedShell shellTemplate, someFile
-   put the result into gitResult
-   return gitResult
-end git_CheckoutOurs
-
-command git_CheckoutTheirs someFile
-   put "git checkout --ours -- [[shortFile]]" into shellTemplate
-   git_ExecuteMergedShell shellTemplate, someFile
-   put the result into gitResult
-   return gitResult
-end git_CheckoutTheirs
-
-
---> Global | GIT | Unmerged paths | Both modified | File | Menu
--
-on menu_AddOursToStage arrayView
-   put _getFile (arrayView) into someFile
-   
-   git_AddFile someFile
-   put the result into gitResult
-   
-   -- git_CheckoutOurs someFile
-   --  put the result into gitResult
-   
-   if gitResult is not empty then display_Lines gitResult, shellTemplate
-   refresh
-end menu_AddOursToStage
-
-on menu_CheckoutOurs arrayView
-   put _getFile (arrayView) into someFile
-   git_CheckoutOurs someFile
-   put the result into gitResult
-   
-   if gitResult is not empty then display_Lines gitResult, shellTemplate
-   refresh
-end menu_CheckoutOurs
-
-on menu_CheckoutTheirs arrayView
-   put _getFile (arrayView) into someFile
-   
-   git_CheckoutTheirs someFile
-   put the result into mergeResult
-   display_Lines mergeResult, shellTemplate
-   refresh
-end menu_CheckoutTheirs
-
-on _
-end _
-
-on menu_GoToTheirStack
-   
-end menu_GoToTheirStack
-
-on _
-end _
-
-on insert_Edit
-   return "Edit | Menu"
-end insert_Edit
-
-
---> Global | GIT | Unmerged paths | Added by them | File | Menu
--
-on menu_AddFileToStage arrayView
-   put _getFile (arrayView) into someFile
-   git_AddFile someFile
-   put the result into addResult
-   refresh
-end menu_AddFileToStage
-
-on menu_RemoveFileFromStage arrayView
-   put _getFile (arrayView) into someFile
-   git_RemoveFile someFile
-   put the result into removeResult
-   refresh
-end menu_RemoveFileFromStage
-
-
-
---> Global | GIT | Unmerged Paths | Added By Us | File | Menu
--
-on menu_CheckoutOurs arrayView
-   set the cursor to watch
-   put "git checkout --ours {shortFile}" into shellTemplate
-   put _getFile (arrayView) into someFile
-   git_ExecuteMergedShell shellTemplate, someFile
-   refresh
-end menu_CheckoutOurs
-
-on menu_CheckoutTheirs arrayView
-   put "git checkout --theirs {shortFile}" into shellTemplate
-   put _getFile (arrayView) into someFile
-   git_ExecuteMergedShell shellTemplate, someFile
-   refresh
-end menu_CheckoutTheirs
-
-on _
-end _
-
-on menu_AddFileToStage arrayView
-   put _getFile (arrayView) into someFile
-   git_AddFile someFile
-   put the result into addResult
-   refresh
-end menu_AddFileToStage
-
-on menu_RemoveFileFromStage arrayView
-   put the selected_Value of arrayView into relativeFile
-   put relativeFile
-end menu_RemoveFileFromStage
-
-on _
-end _
-
-on insert_Edit
-   return "Edit | Menu"
-end insert_Edit
-
-
---> Global | GIT | Unmerged Paths | Both Deleted | File | Menu
--
-on menu_About
-   answer "Both deleted means..."
-end menu_About
-
-on menu_AddFileToStage arrayView
-   put _getFile (arrayView) into someFile
-   git_AddFile someFile
-   refresh
-end menu_AddFileToStage
-
-on menu_RemoveFileFromStage arrayView
-   put _getFile (arrayView) into someFile
-   git_RemoveFile someFile
-   put the result into removeResult
-   refresh
-end menu_RemoveFileFromStage
-
-on _
-end _
-
-on insert_BothDeleted
-   return "Edit | Menu"
-end insert_BothDeleted
-
-
---> Global | GIT | Changes not staged for commit | Modified | Menu
--
-on insert_ChangesNotStaged
-   return "Global | GIT | Changes not staged for commit | Menu"
-end insert_ChangesNotStaged
-
-
---> Global | GIT | Changes not staged for commit | Menu
--
-on menu_CommitAllStaged arrayView
-   put lcw_Ask ("Comment on this change...") into someComment
-   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   
-   git_CommitChanges someComment, gitCheckoutFolder
-   put the result into shellResult
-   
-   display_Lines shellResult, "git_CommitChanges"
-   refresh
-end menu_CommitAllStaged
-
-
---> Global | GIT | Changes not staged for commit | Modified | File | Menu
--
-on menu_ReloadStack arrayView
-   -- we are not (yet) checking for backscript and frontscript use
-   put _getFile (arrayView) into someFile
-   put the short name of stack someFile into stackName
-   put stackName is among the lines of thestacksinuse into isUsed
-   revert stack stackName
-   if isUsed is true then start using stack stackName
-end menu_ReloadStack
-
-getprop disabled_ReloadStack [arrayView]
-   put _getFile (arrayView) into someFile
-   if exists (stack someFile) then
-      put stack_ListEditedNames() into editedStacks
-      put the short name of stack someFile into stackName
-      if stackName is among the lines of editedStacks then
-         -- let's not reload stacks that need saving first
-         return true
-      else
-         return false
-      end if
-   else
-      return true
-   end if
-end disabled_ReloadStack
-
-on menu_AddFile arrayView
-   put _getFile (arrayView) into someFile
-   git_AddFile someFile
-   refresh
-end menu_AddFile
-
-on menu_AddThenCommitFile arrayView
-   -- just for fun
-   put _getFile (arrayView) into someFile
-   git_AddFile someFile
-   git_CommitFile someFile
-   refresh
-end menu_AddThenCommitFile
-
-
---> Global | GIT | Changes to be committed | New file | File | Menu
--
-on menu_CommitFile arrayView
-   put lcw_Ask ("Comment on this change...") into someComment
-   put _getFile (arrayView) into someFile
-   
-   put true into pVerbose -- for more info
-   git_CommitFile someFile, someComment, pVerbose
-   put the result into shellResult
-   
-   display_Lines shellResult, "git_CommitFile"
-   refresh
-end menu_CommitFile
-
-on _
-end _
-
-on menu_RevealInFinder arrayView
-   put _getFile (arrayView) into someFile
-   finder_Reveal someFile
-end menu_RevealInFinder
-
-
---> Global | GIT | Changes to be committed | Modified | File | Menu
--
-on menu_CommitFile arrayView
-   -- do above
-end menu_CommitFile
-
-on _
-end _
-
-on menu_RevealInFinder arrayView
-   put _getFile (arrayView) into someFile
-   finder_Reveal someFile
-end menu_RevealInFinder
-
-
---> Global | GIT | Changes to be committed | Menu
--
-on menu_CommitChanges arrayView
-   put lcw_Ask ("Comment on this change...") into someComment
-   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   
-   git_CommitChanges someComment, gitCheckoutFolder
-   put the result into shellResult
-   
-   display_Lines shellResult, "git_CommitChanges"
-   refresh
-end menu_CommitChanges
-
-
---> Global | GIT | Changes to be committed | New file | Menu
--
-on menu_CommitChanges arrayView
-   -- do the above
-end menu_CommitChanges
-
-
---> Global | GIT | Changes to be committed | Modified | Menu
--
-on menu_CommitChanges arrayView
-   -- do the above
-end menu_CommitChanges
-
-
---> Global | GIT | Untracked files | Files | File | Menu
--
-on menu_AddUntrackedFile arrayView
-   put _getFile (arrayView) into someFile
-   git_AddFile someFile
-   refresh
-end menu_AddUntrackedFile
-
-on _
-end _
-
-on menu_EditScript arrayView
-   put _getFile (arrayView) into someFile
-   edit the script of stack someFile
-end menu_EditScript
-
-
---> Global | GIT | Untracked files | Files | File | Menu | Disabled
--
-getprop disabled_EditScript [arrayView]
-   put _getFile (arrayView) into someFile
-   if exists (stack someFile) then
-      return false
-   else
-      return true
-   end if
-end disabled_EditScript
-
 --> Global | GIT | Line | File | Menu
 -
 on menu_StageThenCommit arrayView
@@ -382,9 +95,8 @@ on menu_StageThenCommit arrayView
    refresh
 end menu_StageThenCommit
 
-on submenu_Branch
-   return "Global | GIT | Branch | Menu"
-end submenu_Branch
+on _
+end _
 
 on menu_AddUntrackedFile arrayView
    -- Untracked files:,files,controllers/Global_GIT_Menu.livecodescript,
@@ -415,9 +127,12 @@ on menu_AddAllUntracked arrayView
    refresh
 end menu_AddAllUntracked
 
-on menu_ResetToLastCommit
-   breakpoint
-end menu_ResetToLastCommit
+on _
+end _
+
+on submenu_Branch
+   return "Global | GIT | Branch | Menu"
+end submenu_Branch
 
 on _
 end _
@@ -430,84 +145,19 @@ on menu_StageAllChanges
    git_AddChanged
 end menu_StageAllChanges
 
-on _
-end _
 
-on submenu_Dev
-   return "Dev | Menu"
-end submenu_Dev
-
-
---> Global | GIT | Line | File | Menu | Props
+--> Dev | Menu
 -
+on menu_GoToStack arrayView
+   put _getFile (arrayView) into someFile
+   go to stack someFile
+end menu_GoToStack
 
---> Global | GIT | Line | File | Menu | Disabled
--
-getprop disabled_ResetToLastCommit
-   if LocalArray ["topKey"] = "Branch" then
-      return "delete"
-   else
-      return false
-   end if
-end disabled_ResetToLastCommit
+on menu_EditFile arrayView
+   put _getFile (arrayView) into someFile
+   atom_DisplayFile someFile
+end menu_EditFile
 
-getprop disabled_RevertToLastCommit [arrayView]
-   put the hilited_Element of arrayView into pathItems
-   if LocalArray ["topKey"] = "Branch" or the number of items of pathItems < 3 then
-      return "delete"
-   else
-      return false
-   end if
-end disabled_RevertToLastCommit
-
-getprop disabled_StageAllChanges
-   if LocalArray ["topKey"] = "Changes not staged for commit:" then
-      return false
-   else
-      return "delete"
-   end if
-end disabled_StageAllChanges
-
-getprop disabled_SwitchBranch [arrayView]
-   if LocalArray ["topKey"] = "Branch" then
-      return false
-   else
-      return "delete"
-   end if
-end disabled_SwitchBranch
-
-getprop disabled_AddAllUntracked [arrayView]
-   put the hilited_Element of arrayView into pathItems
-   put LocalArray ["topKey"] into topKey
-   put the number of items of pathItems into pathNum
-   -- if topKey = "Untracked files:" and the number of items of pathItems < 3 then
-   if topKey is among the items of "Untracked files:,Changes not staged for commit:" and pathNum <3 then
-      return false
-   else
-      return "delete"
-   end if
-end disabled_AddAllUntracked
-
-getprop disabled_AddUntrackedFile [arrayView]
-   put the hilited_Element of arrayView into pathItems
-   
-   put LocalArray ["topKey"] into topKey
-   put the number of items of pathItems into pathNum
-   --  if topKey is among the items of "Untracked files:" and pathNum > 2 then
-   if topKey is among the items of "Untracked files:,Changes not staged for commit:" and pathNum > 2 then
-      return false
-   else
-      return "delete"
-   end if
-end disabled_AddUntrackedFile
-
-getprop disabled_StashChanges
-   if LocalArray ["topKey"] = "Changes to be committed:" then
-      return false
-   else
-      return "delete"
-   end if
-end disabled_StashChanges
 
 getprop disabled_StageThenCommit [arrayView]
    put LocalArray ["displayedArray"] into displayedArray
@@ -527,30 +177,55 @@ getprop disabled_StageThenCommit [arrayView]
    end if
 end disabled_StageThenCommit
 
+getprop disabled_AddUntrackedFile [arrayView]
+   put the hilited_Element of arrayView into pathItems
+   
+   put LocalArray ["topKey"] into topKey
+   put the number of items of pathItems into pathNum
+   --  if topKey is among the items of "Untracked files:" and pathNum > 2 then
+   if topKey is among the items of "Untracked files:,Changes not staged for commit:" and pathNum > 2 then
+      return false
+   else
+      return "delete"
+   end if
+end disabled_AddUntrackedFile
 
---> Dev | Menu
--
-on menu_Edit arrayView
-   put the behavior of arrayView into bObject
-   edit the script of bObject
-end menu_Edit
+getprop disabled_AddAllUntracked [arrayView]
+   put the hilited_Element of arrayView into pathItems
+   put LocalArray ["topKey"] into topKey
+   put the number of items of pathItems into pathNum
+   -- if topKey = "Untracked files:" and the number of items of pathItems < 3 then
+   if topKey is among the items of "Untracked files:,Changes not staged for commit:" and pathNum <3 then
+      return false
+   else
+      return "delete"
+   end if
+end disabled_AddAllUntracked
 
+-- getprop disabled_ResetToLastCommit
+if LocalArray ["topKey"] = "Branch" then
+   return "delete"
+else
+   return false
+end if
+end disabled_ResetToLastCommit
 
---> Edit | Menu
--
-on menu_GoToStack arrayView
-   put _getFile (arrayView) into someFile
-   go to stack someFile
-end menu_GoToStack
+getprop disabled_StashChanges
+   if LocalArray ["topKey"] = "Changes to be committed:" then
+      return false
+   else
+      return "delete"
+   end if
+end disabled_StashChanges
 
-on menu_EditFile arrayView
-   put _getFile (arrayView) into someFile
-   atom_DisplayFile someFile
-end menu_EditFile
+getprop disabled_StageAllChanges
+   if LocalArray ["topKey"] = "Changes not staged for commit:" then
+      return false
+   else
+      return "delete"
+   end if
+end disabled_StageAllChanges
 
-
---> Edit | Menu | Disabled
--
 getprop disabled_GoToStack [arrayView]
    put _getFile (arrayView) into someFile
    if exists (stack someFile) is true then

@@ -1,4 +1,4 @@
-﻿script "Global_GIT_Tag_Menu"
+﻿script "Global | GIT | Tag | Menu"
 --> MetaData
 -
 license: GPLv3

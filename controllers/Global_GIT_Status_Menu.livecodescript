@@ -1,4 +1,4 @@
-﻿script "Global_GIT_Status_Menu"
+﻿script "Global | GIT | Status | Menu"
 --> MetaData
 -
 license: GPLv3
@@ -59,6 +59,8 @@ end _
 on insert_Menu
    return "Global | GIT | Basics | Menu"
 end insert_Menu
+
+--> END
 
 on _
 end _
@@ -223,7 +225,7 @@ end disabled_Init
 -
 private command refreshGitStatus
    put LocalArray ["projectName"] into projectName
-   refresh_GitStatus projectName
+   display_GitRefresh projectName
    return true
    
    put LocalArray ["gitFolder"] into gitFolder

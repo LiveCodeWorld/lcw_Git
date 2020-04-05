@@ -1,4 +1,4 @@
-﻿script "Global_Menu_Git_Line_Menu"
+﻿script "Global | Menu | Git | Line | Menu"
 --> MetaData
 -
 license: GPLv3

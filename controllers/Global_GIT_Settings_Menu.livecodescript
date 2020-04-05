@@ -6,9 +6,53 @@ name: Global_GIT_Settings_Menu
 type: controller
 version: 0.1
 
+--> Menu | Props
+-
+local LocalArray
+
+on menu_Init tObject
+   put _CheckProjectName (tObject) into projectName
+   if projectName is empty then return false
+   
+   put projectName into LocalArray ["projectName"]
+   put the git_CheckoutFolder of stack projectName into gitFolder
+   put gitFolder into LocalArray ["gitFolder"]
+   return true
+end menu_Init
+
+private function _CheckProjectName tObject
+   -- let's check we are working with an indexView
+   put the view_Object of tObject into displayView
+   if exists (displayView) is false then return empty
+   
+   -- put displayView into LocalArray ["displayView"]
+   put the title_Text of displayView into projectName
+   if there is a stack projectName then      
+      return projectName
+   else
+      return empty
+   end if
+end _CheckProjectName
+
+getprop menu_Target [tObject]
+   put LocalArray ["gitFolder"] into gitFolder
+   return gitFolder
+end menu_Target
+
 
 --> Global | GIT | Settings | Menu
 -
+on menu_DisplayGitRemote gitFolder
+   put git_GetRemoteAddress (gitFolder) into remoteAddress
+   --
+   put LocalArray ["projectName"] into projectName
+   put merge ("Edit the remote address for repo [[projectName]]...") into someQuestion
+   put lcw_Ask (someQuestion, remoteAddress)
+end menu_DisplayGitRemote
+
+on _
+end _
+
 on menu_ConfigureGitLogin
    put user_GetLogin() into userName
    put lcw_Ask("GIT user name...", userName) into userName

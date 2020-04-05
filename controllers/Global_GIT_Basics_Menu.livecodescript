@@ -12,24 +12,15 @@ version: 0.3
 local LocalArray
 
 on menu_Init tObject
-   -- put the display_View of tObject into displayView
-   put the view_Object of tObject into displayView
-   put displayView into LocalArray ["displayView"]
-   put the title_Text of displayView into projectName
-   put projectName into LocalArray ["projectName"]
-   if there is not a stack projectName then
-      breakpoint
-      return false
-   end if
+   put _CheckDisplayView (tObject) into displayView
+   if displayView is empty then return false
+   put _CheckProjectName (displayView) into projectName
+   if projectName is empty then return false
+   _LoadGitDisplayView projectName
    
-   put display_FindView ("Git Status", projectName) into gitDisplayView
-   put gitDisplayView into LocalArray ["gitDisplayView"]
-   
-   -- put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
    put the git_CheckoutFolder of stack projectName into gitFolder
    put the git_IsActive of stack projectName into gitIsActive
    
-   -- put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitFolder"]
    put gitFolder into LocalArray ["gitFolder"]
    put gitIsActive into LocalArray ["gitIsActive"]
    put _RemoteIsBad() into LocalArray ["_RemoteIsBad"]
@@ -45,30 +36,144 @@ on menu_Init tObject
    return true
 end menu_Init
 
+getprop disabled_PushCurrentBranch
+   put LocalArray ["statusArray"] into statusArray
+   put statusArray ["Branch"] into branchArray
+   put "(use 'git push' to publish your local commits)" into pushLine
+   replace "'" with quote in pushLine
+   put the keys of branchArray into branchKeys
+   if pushLine is among the lines of branchKeys then
+      return false
+   else
+      return true
+   end if
+end disabled_PushCurrentBranch
+
+getprop disabled_RefreshGitStatus
+   if LocalArray ["gitIsActive"] is false then
+      return true
+   end if
+   
+   put LocalArray ["projectName"] into projectName
+   if _ExistsGitStatusDisplay (projectName) then
+      return false
+   else
+      return "delete"
+   end if
+end disabled_RefreshGitStatus
+
+getprop disabled_DisplayGitStatus
+   if LocalArray ["gitIsActive"] is false then
+      return true
+   end if
+   
+   put LocalArray ["projectName"] into projectName
+   if _ExistsGitStatusDisplay (projectName) then
+      return "delete"
+   else
+      return false
+   end if
+end disabled_DisplayGitStatus
+
+getprop disabled_Pull
+   return LocalArray ["_RemoteIsBad"]
+end disabled_Pull
+
+getprop disabled_PushCurrentBranch
+   return LocalArray ["_RemoteIsBad"]
+end disabled_PushCurrentBranch
+
+getprop disabled_AddAllUntracked
+   if LocalArray ["gitIsActive"] is false then return true
+   put _FilesToAdd() into untrackedFiles
+   if untrackedFiles is empty then
+      return true
+   else
+      return false
+   end if
+end disabled_AddAllUntracked
+
+getprop disabled_StageThenCommit
+   if LocalArray ["gitIsActive"] is false then return true
+   if _FilesToAdd() is not empty then return true
+   
+   if _FilesToStageAndCommit() then
+      return false
+   else
+      return true
+   end if
+end disabled_StageThenCommit
+
+private function _CheckDisplayView tObject
+   -- let's check we are working with an indexView
+   put the view_Object of tObject into displayView
+   if exists (displayView) is false then return empty
+   
+   put displayView into LocalArray ["displayView"]
+   return displayView
+end _CheckDisplayView
+
+private command _LoadGitDisplayView projectName
+   put display_FindView ("Git Status", projectName) into gitDisplayView
+   put gitDisplayView into LocalArray ["gitDisplayView"]
+   return gitDisplayView
+end _LoadGitDisplayView
+
+private function _CheckProjectName displayView
+   -- check LCW project
+   put the title_Text of displayView into projectName
+   if there is a stack projectName then
+      put projectName into LocalArray ["projectName"]
+      return projectName
+   else
+      put empty into LocalArray ["projectName"]
+      return empty
+   end if
+end _CheckProjectName
+
+private function _RemoteIsBad
+   put LocalArray ["gitFolder"] into gitFolder
+   put git_GetRemoteAddress (gitFolder) into remoteAddress
+   
+   switch
+      case there is not a folder gitFolder
+         return true
+      case remoteAddress begins with "git@github.com:LiveCodeWorld/"
+         return false
+      default
+         -- remote address is not a LiveCodeWorld project
+         -- disabling for safety (this is not a generic git tool)
+         return true
+   end switch
+end _RemoteIsBad
+
 
 --> Global | GIT | Basics | Menu
 -
+on menu_Test
+   put mArray_GetActiveMenuController ("Global | GIT | Basics | Menu")
+end menu_Test
+
 on menu_DisplayGitStatus
-   stack_SaveEdited "all"
-   --
    put LocalArray ["gitFolder"] into gitFolder
+   --
+   stack_SaveEdited "all"
    display_GitFolderStatus gitFolder
 end menu_DisplayGitStatus
 
-on menu_RefreshGitStatus
+on menu_RefreshDisplay
    stack_SaveEdited "all"
    _RefreshGitStatus
-end menu_RefreshGitStatus
+end menu_RefreshDisplay
 
 on menu_Pull
+   put LocalArray ["gitFolder"] into gitFolder
    breakpoint
    
    -- TO PULL A new BRANCH FROM A REMOTE REPOSITORY
    -- put merge("git pull origin [[remoteBranch]]:[[newLocalBranch]]") into someShell
    -- put "git pull" into someShell
    -- put "git pull origin master" into someShell
-   
-   put LocalArray ["gitFolder"] into gitFolder
    
    put git_CurrentBranchName (gitFolder) into currentBranchName
    put "git pull origin" && kwote (currentBranchName) into someShell
@@ -110,7 +215,7 @@ on menu_AddAllUntracked
    _RefreshGitStatus
 end menu_AddAllUntracked
 
-on menu_StageThenCommit
+on menu_StageThenCommit gitFolder
    put LocalArray ["gitFolder"] into gitFolder
    --
    put lcw_Ask ("Comment on this change...") into someComment
@@ -121,11 +226,11 @@ end menu_StageThenCommit
 on _
 end _
 
-on menu_PushCurrentBranch
+on menu_PushCurrentBranch gitFolder
    -- TO push THE new BRANCH TO A REMOTE REPOSITORY
-   
    set the cursor to watch
    put LocalArray ["gitFolder"] into gitFolder
+   
    put git_CurrentBranchName (gitFolder) into currentBranchName
    put "git push origin" && kwote (currentBranchName) into someShell
    
@@ -157,7 +262,7 @@ end menu_PushCurrentBranch
 on _
 end _
 
-on menu_GitDocumentation arrayView, menuChoice
+on menu_GitDocumentation noIdea, menuChoice
    switch menuChoice
       case "Crash course"
          launch url "http://git.or.cz/course/svn.html"
@@ -170,80 +275,6 @@ on menu_GitDocumentation arrayView, menuChoice
          break
    end switch
 end menu_GitDocumentation
-
-
---> Global | GIT | Basics | Menu | Props
--
-
---> Global | GIT | Basics | Menu | Disabled
--
-getprop disabled_RefreshGitStatus
-   if LocalArray ["gitIsActive"] is false then
-      return true
-   end if
-   
-   put LocalArray ["projectName"] into projectName
-   if _ExistsGitStatusDisplay (projectName) then
-      return false
-   else
-      return "delete"
-   end if
-end disabled_RefreshGitStatus
-
-getprop disabled_DisplayGitStatus
-   if LocalArray ["gitIsActive"] is false then
-      return true
-   end if
-   
-   put LocalArray ["projectName"] into projectName
-   if _ExistsGitStatusDisplay (projectName) then
-      return "delete"
-   else
-      return false
-   end if
-end disabled_DisplayGitStatus
-
-getprop disabled_Pull
-   return LocalArray ["_RemoteIsBad"]
-end disabled_Pull
-
-getprop disabled_PushCurrentBranch
-   put LocalArray ["statusArray"] into statusArray
-   put statusArray ["Branch"] into branchArray
-   put "(use 'git push' to publish your local commits)" into pushLine
-   replace "'" with quote in pushLine
-   put the keys of branchArray into branchKeys
-   if pushLine is among the lines of branchKeys then
-      return false
-   else
-      return true
-   end if
-end disabled_PushCurrentBranch
-   
-getprop disabled_PushCurrentBranch
-   return LocalArray ["_RemoteIsBad"]
-end disabled_PushCurrentBranch
-
-getprop disabled_AddAllUntracked
-   if LocalArray ["gitIsActive"] is false then return true
-   put _FilesToAdd() into untrackedFiles
-   if untrackedFiles is empty then
-      return true
-   else
-      return false
-   end if
-end disabled_AddAllUntracked
-
-getprop disabled_StageThenCommit
-   if LocalArray ["gitIsActive"] is false then return true
-   if _FilesToAdd() is not empty then return true
-   
-   if _FilesToStageAndCommit() then
-      return false
-   else
-      return true
-   end if
-end disabled_StageThenCommit
 
 
 --> Private
@@ -291,22 +322,6 @@ private function _GetStatusArray
    return statusArray
 end _GetStatusArray
 
-private function _RemoteIsBad
-   put LocalArray ["gitFolder"] into gitFolder
-   put git_GetRemoteAddress (gitFolder) into remoteAddress
-   
-   switch
-      case there is not a folder gitFolder
-         return true
-      case remoteAddress begins with "git@github.com:LiveCodeWorld/"
-         return false
-      default
-         -- remote address is not a LiveCodeWorld project
-         -- disabling for safety (this is not a generic git tool)
-         return true
-   end switch
-end _RemoteIsBad
-
 private function _IsGitStatusDisplay
    put LocalArray ["displayView"] into displayView
    put LocalArray ["projectName"] into projectName
@@ -315,5 +330,5 @@ end _IsGitStatusDisplay
 
 private command _RefreshGitStatus
    put LocalArray ["projectName"] into projectName
-   refresh_GitStatus projectName
+   display_GitRefresh projectName
 end _RefreshGitStatus
