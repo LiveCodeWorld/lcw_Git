@@ -7,13 +7,50 @@ type: controller
 version: 0.1
 
 
+--> Menu | Init
+-
+/* mTarget should already be set by set the menu_Target of displayView to projectName */
+
+local LocalArray
+
+on menu_Init tObject
+   put the view_Object of tObject into displayView
+   put "LivecodeWorld" into LocalArray ["orgName"]
+   
+   put displayView into LocalArray ["displayView"]
+   put the title_Text of displayView into githubTeamName
+end menu_Init
+
+command stuff
+   --
+   put projectName into LocalArray ["projectName"]
+   put projectName & ".wiki" into wikiProjectName
+   put library_FetchProjectFolder (wikiProjectName) into wikiFolder
+   if there is a folder wikiFolder then
+      put wikiFolder into LocalArray ["wikiFolder"]
+   end if
+   
+   put github_LivecodeWorldProjectExists (projectName) into gitHubRepoExists
+   put gitHubRepoExists into LocalArray ["gitHubRepoExists"]
+end stuff
+
+
 --> Global | Github | Menu
 -
-on menu_LaunchGithub displayView, lcwRepo
-   -- put LocalArray ["shortFolder"] into lcwRepo -- lazy
-   github_Launch lcwRepo
+on menu_LaunchGithub
+   github_Launch
 end menu_LaunchGithub
 
+on _
+end _
+
+on subMenu_Dev
+   return "Dev | Menu"
+end subMenu_Dev
+
+
+--> Dev | Menu
+-
 on menu_DisplayGithubRepoArray
    put LocalArray ["projectName"] into repoName
    put github_FetchRepoArray (repoName) into repoArray
@@ -31,6 +68,8 @@ on _
 end _
 
 on menu_AddProjectWiki projectName
+   breakpoint -- not finished
+   
    put projectName & ".wiki" into wikiProjectName
    
    answer folder "Select a folder containing a project..."
@@ -48,9 +87,9 @@ on menu_AddProjectWiki projectName
    display_LcwProjectList
 end menu_AddProjectWiki
 
-on menu_CreateLibraryPages projectName
-   -- put projectName & ".wiki" into wikiProjectName
-   -- put library_FetchProjectFolder (wikiProjectName) into wikiFolder
+on menu_CreateGithubProjectPages projectName
+   lcw_Answer "Add new wiki pages for each project stackto the local github project"
+   --
    put LocalArray ["wikiFolder"] into wikiFolder
    put LocalArray ["displayView"] into displayView
    put the view_Index of displayView into stackNames
@@ -64,5 +103,27 @@ on menu_CreateLibraryPages projectName
          put wikiMarkdown into url someURL
       end if
    end repeat
-end menu_CreateLibraryPages
+end menu_CreateGithubProjectPages
 
+
+--> Dev | Props
+-
+getprop disabled_CreateGithubProjectPages [projectName]
+   put LocalArray ["wikiFolder"] into wikiFolder
+   if there is a folder wikiFolder then
+      return false
+   else
+      return true
+   end if
+end disabled_CreateGithubProjectPages
+
+getprop disabled_AddProjectWiki [projectName]
+   if LocalArray ["gitHubRepoExists"] is false then return "true"
+   
+   put LocalArray ["wikiFolder"] into wikiFolder
+   if there is a folder wikiFolder then
+      return "delete"
+   else
+      return false
+   end if
+end disabled_AddProjectWiki

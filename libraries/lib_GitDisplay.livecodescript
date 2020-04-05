@@ -229,9 +229,29 @@ end display_Gists
 
 --> Display | GitHub
 -
-command display_GithubProjects
-   put github_FetchOrgRepoAray() into reposArray
-   display_Array reposArray
+command display_GithubProjects pOrgName
+   if pOrgName is empty then
+      put "LiveCodeWorld" into pOrgName
+   end if
+   
+   -- same as github_ListOrgRepos (pOrgName) but we can now store githubOrgRepoAray
+   put github_FetchOrgRepoAray (pOrgName) into githubOrgRepoAray
+   repeat for each key repoNum in githubOrgRepoAray
+      put githubOrgRepoAray [repoNum]["name"] into repoName
+      put repoName & CR after orgRepoNames
+   end repeat
+   delete char -1 of orgRepoNames
+   sort orgRepoNames
+   --
+   display_Lines orgRepoNames, orgName, "mouseDoubleUp_GitHub", "Github Repos", true
+   put the result into displayView
+   --
+   set the title_Menu of displayView to "Global | Github | Menu"
+   set the line_Menu of displayView to "Global | Github | Line | Menu"
+   --
+   set the github_OrgRepoAray of displayView to githubOrgRepoAray
+   --
+   return displayView
 end display_GithubProjects
 
 command display_GitHubInfo repoName

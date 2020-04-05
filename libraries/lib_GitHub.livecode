@@ -15,6 +15,13 @@ The gist library is seperate and moving forwards we wil create individual librar
 
 --> Working on
 -
+function github_LivecodeWorldProjectExists projectName
+   put github_ListOrgRepos() into lcwRepoNames
+   put lcwRepoNames into LocalArray ["lcwRepoNames"]
+   put projectName is among the lines of LocalArray ["lcwRepoNames"] into someBoolean
+   return someBoolean
+end github_LivecodeWorldProjectExists
+
 getprop github_HandlerURL [shortHkey]
    put the long id of the target into hObject
    put the hkey_Line [shortHkey] of hObject into hTableLine
@@ -27,6 +34,15 @@ getprop github_HandlerURL [shortHkey]
    put github_GetHandlerURL (hObject, sLineNum, eLineNum) into githubURL 
    return githubURL
 end github_HandlerURL
+
+
+--> Github | Props
+-
+getprop github_WikiPage
+   put the stack_Object of the target into stackObject
+   put github_CreateStackWikiPage (stackObject) into mdLines
+   return mdLines
+end github_WikiPage
 
 getprop github_RelativePath
    put the stack_Object of the target into sObject
@@ -73,8 +89,12 @@ function github_ConstructLaunchUrl stackName
    return githubURL
 end github_ConstructLaunchUrl
 
-function github_GetLaunchUrl repoName, pPath, scriptType, stackName
-   put github_FetchRepoArray (repoName) into repoArray
+function github_GetLaunchUrl pRepoName, pPath, scriptType, stackName
+   if pRepoName is empty then
+      return "https://github.com/LiveCodeWorld"
+   end if
+   
+   put github_FetchRepoArray (pRepoName) into repoArray
    put github_ExtractHtmlUrl (repoArray) into githubURL
    if pPath is empty then
       return githubURL & pPath
@@ -219,12 +239,6 @@ end github_FindRepoName
 
 --> GitHub | Wiki
 -
-getprop github_WikiPage
-   put the stack_Object of the target into stackObject
-   put github_CreateStackWikiPage (stackObject) into mdLines
-   return mdLines
-end github_WikiPage
-
 function github_CreateStackWikiPage stackObject
    /*
    You can find the latest version of the script [here](../blob/master/[[relativePath]]).
@@ -324,12 +338,14 @@ command github_CreateOrgRepo rName, rDesc, pOrgName, pHomePage
 end github_CreateOrgRepo
 
 function github_ListOrgRepos pOrgName
-   put github_FetchOrgRepoAray (pOrgName) into reposArray
-   repeat for each key repoNum in reposArray
-      put reposArray [repoNum]["name"] into repoName
+   put github_FetchOrgRepoAray (pOrgName) into githubOrgRepoAray
+   repeat for each key repoNum in githubOrgRepoAray
+      put githubOrgRepoAray [repoNum]["name"] into repoName
       put repoName & CR after orgRepoNames
    end repeat
    delete char -1 of orgRepoNames
+   sort orgRepoNames
+   --
    return orgRepoNames
 end github_ListOrgRepos
 

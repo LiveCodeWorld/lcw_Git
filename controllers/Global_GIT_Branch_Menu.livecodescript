@@ -88,6 +88,9 @@ on menu_PushCurrentBranch arrayView
    --
    display_GitPushCurrentBranch gitFolder
 end menu_PushCurrentBranch
+
+on _
+end _
    
 on menu_ThisBranch arrayView
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder

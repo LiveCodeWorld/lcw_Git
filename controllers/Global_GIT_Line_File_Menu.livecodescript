@@ -71,7 +71,7 @@ getprop disabled_AddAllUntracked [arrayView]
    put LocalArray ["displayedArray"] into displayedArray
    
    put keys (displayedArray) into topKeys
-   if "Untracked files" is not among the lines of topKeys then
+   if "Untracked files:" is not among the lines of topKeys then
       return true
    end if
    
