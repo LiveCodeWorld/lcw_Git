@@ -13,41 +13,21 @@ Change to indexView or make it clever.
 */
 
 
---> Menu | Props
+--> Menu | Init
 -
-getprop menu_CheckTarget [scriptObject]
-   if exists (scriptObject) is false then return false
-   if project_IsActive ("lcw_GIT") is true then
-      return true
-   else
-      return false
-   end if 
-end menu_CheckTarget
+local LocalArray
 
+on menu_Init
+   put scriptEditor_Object() into sObject
+   put sObject into LocalArray ["sObject"]
+end menu_Init
 
---> Global | GIT | Menu
--
-on menu_DisplayGitStatus scriptObject
-   display_GitStatus scriptObject
-end menu_DisplayGitStatus
+getprop menu_Target [tObject]
+   -- not called on submenus :(
+   put LocalArray ["sObject"] into sObject
+   return sObject
+end menu_Target
 
-on menu_DisplayGistScripts
-   display_Gists "Gist Scripts"
-end menu_DisplayGistScripts
-
-on _
-end _
-
-on submenu_Dev
-   return "Dev | Menu"
-end submenu_Dev
-
-
---> Global | GIT | Menu | Props
--
-
---> Global | GIT | Menu | Disabled
--
 getprop disabled_Dev
    -- utility that displays "Dev | Menu" only when the optionKey is down
    if the optionKey is "Down" then
@@ -74,13 +54,37 @@ getprop disabled_LoadGit
 end disabled_LoadGit
 
 
+--> Global | GIT | Menu
+-
+on menu_DisplayGitStatus scriptObject
+   put LocalArray ["sObject"] into scriptObject
+   --
+   display_GitStatus scriptObject
+end menu_DisplayGitStatus
+
+on menu_DisplayGistScripts
+   display_Gists "Gist Scripts"
+end menu_DisplayGistScripts
+
+on _
+end _
+
+on submenu_Dev
+   return "Dev | Menu"
+end submenu_Dev
+
+
 --> Dev | Menu
 -
 on menu_ShowStackLog scriptObject
+   put LocalArray ["sObject"] into scriptObject
+   --
    display_StackHistory scriptObject
 end menu_ShowStackLog
 
 on menu_StackHistory scriptObject
+   put LocalArray ["sObject"] into scriptObject
+   --
    display_StackHistory scriptObject
 end menu_StackHistory
 
