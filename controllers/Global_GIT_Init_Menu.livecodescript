@@ -100,7 +100,7 @@ end mouseDoubleUp_GitHub
 -
 on menu_RefreshDisplay 
    put LocalArray ["projectName"] into projectName
-   display_GitRefresh projectName
+   display_GitRefreshProjectName projectName
 end menu_RefreshDisplay
 
 on _

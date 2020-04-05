@@ -21,6 +21,15 @@ on menu_Init tObject
    put github_ListOrgRepos() into LocalArray ["lcwRepoNames"]
 end menu_Init
 
+getprop disabled_Branch
+   put LocalArray ["gitFolder"] into gitFolder
+   if there is a folder gitFolder then
+      return false
+   else
+      return true
+   end if
+end disabled_Branch
+
 
 --> Display | Events
 -
@@ -186,48 +195,10 @@ on menu_ArrayViewBehavior displayView
 end menu_ArrayViewBehavior
 
 
---> Global | GIT | Status | Menu | Props
--
-getprop git_ProjectName
-   put git_GetRootFolder() into gitFolder
-   return gitFolder
-   -- return LocalArray ["gitProjectName"]
-end git_ProjectName
-
-getprop git_ProjectNames
-   put library_ListProjectNames() into projectNames
-   return projectNames
-end git_ProjectNames
-
-
---> Global | GIT | Status | Menu | Disabled
--
-getprop disabled_Branch
-   put LocalArray ["gitFolder"] into gitFolder
-   if there is a folder gitFolder then
-      return false
-   else
-      return true
-   end if
-end disabled_Branch
-
--- getprop disabled_Init
-put LocalArray ["gitFolder"] into gitFolder
-if there is a folder gitFolder then
-   return false
-else
-   return true
-end if
-end disabled_Init
-
-
 --> Private
 -
 private command refreshGitStatus
    put LocalArray ["projectName"] into projectName
-   display_GitRefresh projectName
-   return true
-   
-   put LocalArray ["gitFolder"] into gitFolder
-   display_GitFolderStatus gitFolder
+   display_GitRefreshProjectName projectName
+   return truewordOffset(stringToFind, stringToSearch )
 end refreshGitStatus

@@ -9,6 +9,27 @@ version: 0.1
 
 --> Props
 -
+getprop git_ShortFolder
+   -- could use git_GetProject() for a "name"
+   put the git_Folder of the target into gitFolder
+   if gitFolder is empty then return empty
+   
+   set the itemdelimiter to slash
+   put item -1 of gitFolder into gitShortFolder
+   return gitShortFolder
+end git_ShortFolder
+
+getprop git_Folder
+   put the mainstack_File of the target  into objectFile
+   try
+      -- if git is installed
+      put git_GetCheckoutFolder (objectFile) into repoRootFolder
+   catch e
+      put git_FindDotGitFolder (someFile) into checkoutFolder -- slightly faster (2 ticks)
+   end try
+   return repoRootFolder
+end git_Folder
+
 getprop git_IsActive
    put the effective filename of the stack_Object of the target into someFile
    put git_GetActiveStatus (someFile) into someBoolean
@@ -36,18 +57,8 @@ getprop git_WithinCheckoutFolder [pDontUseGit]
    return checkoutFolder is not empty
 end git_WithinCheckoutFolder
 
-getprop git_CheckoutFolder
-   put the mainstack_File of the target  into objectFile
-   try
-      put git_GetCheckoutFolder (objectFile) into repoRootFolder
-   catch e
-      put git_FindDotGitFolder (someFile) into checkoutFolder -- slightly faster (2 ticks)
-   end try
-   return repoRootFolder
-end git_CheckoutFolder
-
 getprop git_Project
-   put the git_CheckoutFolder of the target into gitRootFolder
+   put the git_Folder of the target into gitRootFolder
    put git_GetProjectArray() into gitProjectArray
    put gitProjectArray [gitRootFolder]["project name"] into projectName
    return projectName
@@ -60,7 +71,7 @@ function git_Version
 end git_Version
 
 
---> Working On
+--> Git | Folder
 -
 function git_GetRootFolder
    put pref_GetValue ("gitRootFolder") into gitRootFolder
@@ -75,7 +86,7 @@ command git_SetRootFolder gitRootFolder
 end git_SetRootFolder
 
 
---> Working On | Init
+--> Git | Init
 -
 command git_AddIgnore gitRootFolder
    text_AddTrailing gitRootFolder, slash

@@ -33,7 +33,7 @@ on menu_Init tObject
    if projectName is empty then return false
    _LoadGitDisplayView projectName
    
-   put the git_CheckoutFolder of stack projectName into gitFolder
+   put the git_Folder of stack projectName into gitFolder
    put the git_IsActive of stack projectName into gitIsActive
    
    put gitFolder into LocalArray ["gitFolder"]
@@ -261,7 +261,7 @@ end _GetStatusArray
 
 private command _RefreshGitStatus
    put LocalArray ["projectName"] into projectName
-   display_GitRefresh projectName
+   display_GitRefreshProjectName projectName
 end _RefreshGitStatus
 
 private function _CheckDisplayView tObject

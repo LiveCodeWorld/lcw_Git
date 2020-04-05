@@ -18,7 +18,7 @@ on menu_Init targetObject, mPath, mTitlePath
    
    put scriptObject into LocalArray ["scriptObject"]
    put the script_File of scriptObject into LocalArray ["scriptFile"]
-   put the git_CheckoutFolder of scriptObject into LocalArray ["checkoutFolder"]
+   put the git_Folder of scriptObject into LocalArray ["checkoutFolder"]
    
    put the overlay_Folder of scriptObject into overlayFolder
    -- put overlay_ListNames (overlayFolder) into LocalArray ["overlayNames"]
@@ -46,7 +46,7 @@ on _
 end _
 
 on menu_GitStatus scriptObject
-   put the git_CheckoutFolder of scriptObject into checkoutFolder-- LocalArray ["checkoutFolder"]
+   put the git_Folder of scriptObject into checkoutFolder-- LocalArray ["checkoutFolder"]
    put git_FetchStatusTable (checkoutFolder) into gitTable
    put git_ConstructStatusOutline(gitTable, pTreeTitle, gitHelp) into someOutline
    

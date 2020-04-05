@@ -15,7 +15,7 @@ on menu_Init tObject
    if projectName is empty then return false
    
    put projectName into LocalArray ["projectName"]
-   put the git_CheckoutFolder of stack projectName into gitFolder
+   put the git_Folder of stack projectName into gitFolder
    put gitFolder into LocalArray ["gitFolder"]
    return true
 end menu_Init

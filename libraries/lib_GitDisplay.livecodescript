@@ -12,7 +12,177 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 */
 
 
---> Experimental
+--> Git | Display | Status | Events
+-
+on saveStackRequest
+   -- update the Git Status displays
+   put the long id of the target into cardObject
+   put the git_ShortFolder of cardObject into gitShortFolder
+   if gitShortFolder is empty then pass saveStackRequest -- or the stack won't be saved
+   --
+   put display_FindView ("Git Status", gitShortFolder) into displayView
+   if displayView is not empty then
+      -- display_GitRefreshProjectName gitShortFolder
+      send "display_GitRefreshProjectName gitShortFolder" to me in 20 ticks -- display after saving
+   end if
+   --
+   pass saveStackRequest -- or the stack won't be saved
+end saveStackRequest
+
+on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
+   put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
+   text_AddTrailing gitCheckoutFolder, slash
+   put gitCheckoutFolder & shortFileOrFolder into fileOrFolder
+   
+   switch
+      case there is a stack fileOrFolder
+         if the scriptonly of stack fileOrFolder is true then
+            edit the script of stack fileOrFolder
+         else
+            go to stack fileOrFolder
+         end if
+         break
+      case there is a folder fileOrFolder
+         finder_Reveal fileOrFolder
+         break
+      case there is a file fileOrFolder
+         atom_DisplayFile fileOrFolder 
+         break
+   end switch
+end mDoubleUp_DisplayGitFile
+
+
+--> Display | GIT
+-
+command display_GitStatus pScriptObject
+   if pScriptObject is empty then put the long id of the target into pScriptObject
+   put the git_Folder of pScriptObject into gitCheckoutFolder
+   
+   display_GitFolderStatus gitCheckoutFolder
+   put the result into arrayView
+   return arrayView
+end display_GitStatus
+
+command display_GitRefreshProjectName gitProjectName
+   put display_FindView ("Git Status", gitProjectName) into gitDisplayView
+   if exists (gitDisplayView) is false then
+      return empty
+   else
+      put the git_Folder of stack gitProjectName into gitCheckoutFolder
+      display_GitFolderStatus gitCheckoutFolder
+      return gitCheckoutFolder
+   end if
+end display_GitRefreshProjectName
+
+
+--> Display | GIT | Folder
+-
+command display_GitProjectStatus projectName
+   put project_GetFolder (projectName) into projectFolder
+   if there is not a folder projectFolder then
+      if projectFolder is not empty then put projectFolder
+      answer warning merge ("Cannot locate a folder for project '[[projectName]]'!")
+      breakpoint
+      exit to top
+   end if
+   
+   display_GitFolderStatus projectFolder
+   put the result into displayView
+   return displayView
+end display_GitProjectStatus
+
+command display_GitFolderStatus gitCheckoutFolder
+   if there is not a folder gitCheckoutFolder then return empty
+   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
+   -- see "git_GetStatusArray (gitCheckoutFolder)"
+   --
+   _DisplayGitStatusTable gitStatusTable, gitCheckoutFolder
+   put the result into arrayView
+   return arrayView
+end display_GitFolderStatus
+
+command git_DisplayStatusLines gitCheckoutFolder
+   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
+   set the itemdelimiter to slash
+   put item -1 of gitCheckoutFolder into gitShortFolder
+   put gitShortFolder & comma & "GIT Status" into someTitle
+   display_Index gitStatusTable, someTitle, "Global | GIT | Status | Menu"
+   return the result
+end git_DisplayStatusLines
+
+
+--> Git | Display | Old
+-
+command git_RefreshDisplay pTreeTitle
+   -- this is now handled locally in each display
+   -- look at this to dig out older code for files and log.
+   breakpoint
+   
+   put the git_TreeField of me into gitTreeField
+   if pTreeTitle is empty then put the title_Text of gitTreeField into pTreeTitle
+   
+   switch pTreeTitle
+      case "Files in Repository"
+         set the cursor to watch
+         put git_ExecuteShellCommand ("git ls-files") into commitedFiles
+         put file_IndexToOutline (commitedFiles, "outline") into someOutline
+         set the tree_Display [pTreeTitle] of gitTreeField to someOutline
+         break
+      case "Log"
+         put "git log --pretty=oneline" into someShell
+         -- put space & "-n30" after someShell
+         put git_ExecuteShellCommand(someShell) into simpleLog
+         put git_LogLinkOutline(simpleLog) into someOutline
+         set the tree_Display ["Log"] of gitTreeField to someOutline
+         break
+      default
+         put git_FetchStatusTable() into gitStatusTable
+         put git_ConstructStatusArray (gitStatusTable) into statusArray
+         
+         put statusArray ["gitStatusTable"] into gitStatusTable
+         put statusArray ["gitTitle"] into gitTitle
+         
+         set the tree_Display [gitTitle] of gitTreeField to gitStatusTable
+   end switch
+   return someOutline
+end git_RefreshDisplay
+
+
+--> Display | GIT | Push
+-
+command display_GitPushCurrentBranch gitFolder
+   put git_CurrentBranchName (gitFolder) into currentBranchName
+   put "git push origin" && kwote (currentBranchName) into someShell
+   --
+   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
+   --
+   switch
+      case shellResult begins with "Broken pipe"
+         break
+      case token 1 of shellResult = "Error"
+         /*
+         ERROR: Your account is disabled. Please see https://github.com/account/billing
+         fatal: Could not read from remote repository.
+         
+         Please make sure you have the correct access rights
+         and the repository exists.
+         */
+         put "Check billing" into btnText
+         answer shellResult with btnText or "Cancel"
+         if it is btnText then
+            launch url "https://github.com/account/billing"
+         end if
+         break
+      default
+         lcw_Notify shellResult
+         --
+         env_DeconstructProjectFolder gitFolder, projectName, repoFolder
+         display_GitRefreshProjectName projectName
+   end switch
+end display_GitPushCurrentBranch
+
+
+--> Display| Git |Dynamic Line Menus
 -
 getprop git_StatusMenuTitle
    -- only used by "menu_Title" in the line_Menu of the dynamically created Git Status display_Array as set in arrayView script
@@ -100,114 +270,6 @@ function _DisplayGitStatusScript
 end _DisplayGitStatusScript
 
 
---> Working on
--
-command display_GitPushCurrentBranch gitFolder
-   put git_CurrentBranchName (gitFolder) into currentBranchName
-   put "git push origin" && kwote (currentBranchName) into someShell
-   --
-   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
-   --
-   switch
-      case shellResult begins with "Broken pipe"
-         break
-      case token 1 of shellResult = "Error"
-         /*
-         ERROR: Your account is disabled. Please see https://github.com/account/billing
-         fatal: Could not read from remote repository.
-         
-         Please make sure you have the correct access rights
-         and the repository exists.
-         */
-         put "Check billing" into btnText
-         answer shellResult with btnText or "Cancel"
-         if it is btnText then
-            launch url "https://github.com/account/billing"
-         end if
-         break
-      default
-         lcw_Notify shellResult
-         --
-         env_DeconstructProjectFolder gitFolder, projectName, repoFolder
-         display_GitRefresh projectName
-   end switch
-end display_GitPushCurrentBranch
-
-
---> Git | Display | Status | Events
--
-on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
-   put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
-   text_AddTrailing gitCheckoutFolder, slash
-   put gitCheckoutFolder & shortFileOrFolder into fileOrFolder
-   
-   switch
-      case there is a stack fileOrFolder
-         if the scriptonly of stack fileOrFolder is true then
-            edit the script of stack fileOrFolder
-         else
-            go to stack fileOrFolder
-         end if
-         break
-      case there is a folder fileOrFolder
-         finder_Reveal fileOrFolder
-         break
-      case there is a file fileOrFolder
-         atom_DisplayFile fileOrFolder 
-         break
-   end switch
-end mDoubleUp_DisplayGitFile
-
-
---> Git | Display | Refresh
--
-command display_GitRefresh projectName
-   put display_FindView ("Git Status", projectName) into gitDisplayView
-   if exists (gitDisplayView) is false then
-      return false
-   else
-      put the git_CheckoutFolder of stack projectName into gitCheckoutFolder
-      put git_GetStatusArray (gitCheckoutFolder) into statusArray
-      set the displayed_Array of gitDisplayView to statusArray
-      return true
-   end if
-end display_GitRefresh
-
-command git_RefreshDisplay pTreeTitle
-   -- this is now handled locally in each display
-   -- look at this to dig out older code for files and log.
-   breakpoint
-   
-   put the git_TreeField of me into gitTreeField
-   if pTreeTitle is empty then put the title_Text of gitTreeField into pTreeTitle
-   
-   switch pTreeTitle
-      case "Files in Repository"
-         set the cursor to watch
-         put git_ExecuteShellCommand ("git ls-files") into commitedFiles
-         put file_IndexToOutline (commitedFiles, "outline") into someOutline
-         set the tree_Display [pTreeTitle] of gitTreeField to someOutline
-         break
-      case "Log"
-         put "git log --pretty=oneline" into someShell
-         -- put space & "-n30" after someShell
-         put git_ExecuteShellCommand(someShell) into simpleLog
-         put git_LogLinkOutline(simpleLog) into someOutline
-         set the tree_Display ["Log"] of gitTreeField to someOutline
-         break
-      default
-         put git_FetchStatusTable() into gitStatusTable
-         put git_ConstructStatusArray (gitStatusTable) into statusArray
-         
-         put statusArray ["gitStatusTable"] into gitStatusTable
-         put statusArray ["gitTitle"] into gitTitle
-         
-         set the tree_Display [gitTitle] of gitTreeField to gitStatusTable
-   end switch
-   return someOutline
-end git_RefreshDisplay
-
-
 --> Display | GIST
 -
 command display_Gists pHow
@@ -274,7 +336,7 @@ command display_StackHistory someObject
    
    put the stack_Object of someObject into stackObject
    put the filename of stackObject into stackPath
-   put the git_CheckoutFolder of someObject into gitCheckoutFolder
+   put the git_Folder of someObject into gitCheckoutFolder
    
    put git_GetFileLog (stackPath) into simpleLog
    git_ProcessSimpleLogLines simpleLog, logArray, orderedCommentLines
@@ -294,51 +356,6 @@ command display_StackHistory someObject
    
    return treeView
 end display_StackHistory
-
-
---> Display | GIT
--
-command display_GitStatus pScriptObject
-   if pScriptObject is empty then put the long id of the target into pScriptObject
-   put the git_CheckoutFolder of pScriptObject into gitCheckoutFolder
-   
-   display_GitFolderStatus gitCheckoutFolder
-   put the result into arrayView
-   return arrayView
-end display_GitStatus
-
-command display_GitProjectStatus projectName
-   put project_GetFolder (projectName) into projectFolder
-   if there is not a folder projectFolder then
-      if projectFolder is not empty then put projectFolder
-      answer warning merge ("Cannot locate a folder for project '[[projectName]]'!")
-      breakpoint
-      exit to top
-   end if
-   
-   display_GitFolderStatus projectFolder
-   put the result into displayView
-   return displayView
-end display_GitProjectStatus
-
-command display_GitFolderStatus gitCheckoutFolder
-   if there is not a folder gitCheckoutFolder then return empty
-   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
-   -- see "git_GetStatusArray (gitCheckoutFolder)"
-   --
-   _DisplayGitStatusTable gitStatusTable, gitCheckoutFolder
-   put the result into arrayView
-   return arrayView
-end display_GitFolderStatus
-
-command git_DisplayStatusLines gitCheckoutFolder
-   put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
-   set the itemdelimiter to slash
-   put item -1 of gitCheckoutFolder into gitShortFolder
-   put gitShortFolder & comma & "GIT Status" into someTitle
-   display_Index gitStatusTable, someTitle, "Global | GIT | Status | Menu"
-   return the result
-end git_DisplayStatusLines
 
 
 --> Git | Display | Stack
