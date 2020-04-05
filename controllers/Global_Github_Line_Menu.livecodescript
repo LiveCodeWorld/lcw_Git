@@ -22,23 +22,45 @@ on menu_Init tObject
    -- do something when the menu first loads
 end menu_Init
 
--- getprop disabled_LaunchGithub [projectName]
-if LocalArray ["gitHubRepoExists"] then
-   return false
-else
-   return true
-end if
-end disabled_LaunchGithub
+getprop disabled_DisplayGitStatus [displayView]
+   put the selected_Line of displayView into repoName
+   if exists (stack repoName) then
+      return false
+   else
+      return true
+   end if
+end disabled_DisplayGitStatus
 
 
 --> Global | Github | Line | Menu
 -
 on menu_LaunchGithub displayView
-   put the selected_Line of displayView into lcwRepo
+   put the selected_Line of displayView into repoName
    --
-   github_Launch lcwRepo
+   github_Launch repoName
 end menu_LaunchGithub
 
+on _
+end _
 
---> Deps
+on menu_DisplayGitStatus displayView
+   put the selected_Line of displayView into repoName
+   put the name of stack repoName into sObject
+   --
+   display_GitStatus sObject
+end menu_DisplayGitStatus
+
+on submenu_Dev
+   return "Dev | Menu"
+end submenu_Dev
+
+
+--> Dev | Menu
 -
+on menu_DisplayGithubRepoArray displayView
+   put the selected_Line of displayView into repoName
+   --
+   put github_FetchRepoArray (repoName) into repoArray
+   --
+   display_Array repoArray, repoName
+end menu_DisplayGithubRepoArray

@@ -44,6 +44,12 @@ end menu_LaunchGithub
 on _
 end _
 
+on menu_Refresh indexView
+   put the title_Test of indexView into orgName
+   --
+   display_GithubProjects orgName
+end menu_Refresh
+
 on subMenu_Dev
    return "Dev | Menu"
 end subMenu_Dev

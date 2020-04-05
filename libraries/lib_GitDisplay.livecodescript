@@ -230,6 +230,7 @@ end display_Gists
 --> Display | GitHub
 -
 command display_GithubProjects pOrgName
+   put "Github Repos" into displayStackLabel
    if pOrgName is empty then
       put "LiveCodeWorld" into pOrgName
    end if
@@ -243,11 +244,17 @@ command display_GithubProjects pOrgName
    delete char -1 of orgRepoNames
    sort orgRepoNames
    --
-   display_Lines orgRepoNames, orgName, "mouseDoubleUp_GitHub", "Github Repos", true
-   put the result into displayView
+   put display_FindView (displayStackLabel, pOrgName) into displayView
    --
-   set the title_Menu of displayView to "Global | Github | Menu"
-   set the line_Menu of displayView to "Global | Github | Line | Menu"
+   if exists (displayView) is true then
+      set the view_Index of displayView to orgRepoNames
+   else
+      display_Lines orgRepoNames, pOrgName, "mouseDoubleUp_GitHub", displayStackLabel, true
+      put the result into displayView
+      --
+      set the title_Menu of displayView to "Global | Github | Menu"
+      set the line_Menu of displayView to "Global | Github | Line | Menu"
+   end if
    --
    set the github_OrgRepoAray of displayView to githubOrgRepoAray
    --
