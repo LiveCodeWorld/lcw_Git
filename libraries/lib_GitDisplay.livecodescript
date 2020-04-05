@@ -102,6 +102,37 @@ end _DisplayGitStatusScript
 
 --> Working on
 -
+command display_GitPushCurrentBranch gitFolder
+   put git_CurrentBranchName (gitFolder) into currentBranchName
+   put "git push origin" && kwote (currentBranchName) into someShell
+   --
+   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
+   --
+   switch
+      case shellResult begins with "Broken pipe"
+         break
+      case token 1 of shellResult = "Error"
+         /*
+         ERROR: Your account is disabled. Please see https://github.com/account/billing
+         fatal: Could not read from remote repository.
+         
+         Please make sure you have the correct access rights
+         and the repository exists.
+         */
+         put "Check billing" into btnText
+         answer shellResult with btnText or "Cancel"
+         if it is btnText then
+            launch url "https://github.com/account/billing"
+         end if
+         break
+      default
+         lcw_Notify shellResult
+         --
+         env_DeconstructProjectFolder gitFolder, projectName, repoFolder
+         display_GitRefresh projectName
+   end switch
+end display_GitPushCurrentBranch
+
 
 --> Git | Display | Status | Events
 -

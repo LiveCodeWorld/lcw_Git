@@ -83,6 +83,12 @@ end git_ValidBranchName
 
 --> Global | GIT | Branch | Menu
 -
+on menu_PushCurrentBranch arrayView
+   put the displayed_GitCheckoutFolder of arrayView into gitFolder
+   --
+   display_GitPushCurrentBranch gitFolder
+end menu_PushCurrentBranch
+   
 on menu_ThisBranch arrayView
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
    put git_CurrentBranchName (gitCheckoutFolder)

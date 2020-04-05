@@ -198,33 +198,8 @@ on menu_PushCurrentBranch gitFolder
    -- TO push THE new BRANCH TO A REMOTE REPOSITORY
    set the cursor to watch
    put LocalArray ["gitFolder"] into gitFolder
-   
-   put git_CurrentBranchName (gitFolder) into currentBranchName
-   put "git push origin" && kwote (currentBranchName) into someShell
-   
-   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
-   
-   switch
-      case shellResult begins with "Broken pipe"
-         break
-      case token 1 of shellResult = "Error"
-         /*
-         ERROR: Your account is disabled. Please see https://github.com/account/billing
-         fatal: Could not read from remote repository.
-         
-         Please make sure you have the correct access rights
-         and the repository exists.
-         */
-         put "Check billing" into btnText
-         answer shellResult with btnText or "Cancel"
-         if it is btnText then
-            launch url "https://github.com/account/billing"
-         end if
-         break
-      default
-         lcw_Notify shellResult
-         _RefreshGitStatus
-   end switch
+   --
+   display_GitPushCurrentBranch gitFolder
 end menu_PushCurrentBranch
 
 on _
