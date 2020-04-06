@@ -52,9 +52,8 @@ on menu_Init tObject
    put github_LivecodeWorldProjectExists (projectName) into gitHubRepoExists
    put gitHubRepoExists into LocalArray ["gitHubRepoExists"]
 end menu_Init
- 
-getprop menu_Target [displayObject]
-   -- not called in subMenus (so not using)
+
+getprop menu_Target [tObject]
    put LocalArray ["projectName"] into projectName
    return projectName
 end menu_Target
@@ -98,16 +97,16 @@ end mouseDoubleUp_GitHub
 
 --> Global | GIT | Init | Menu
 -
-on menu_RefreshDisplay 
-   put LocalArray ["projectName"] into projectName
+on menu_RefreshDisplay projectName
+   -- put LocalArray ["projectName"] into projectName
    display_GitRefreshProjectName projectName
 end menu_RefreshDisplay
 
 on _
 end _
 
-on menu_InitialiseGit
-   put LocalArray ["projectName"] into projectName
+on menu_InitialiseGit projectName
+   -- put LocalArray ["projectName"] into projectName
    put LocalArray ["displayView"] into displayView
    put LocalArray ["projectFolder"] into projectFolder
    --
@@ -125,8 +124,8 @@ end menu_InitialiseGit
 on _
 end _
 
-on menu_CreateGithubProject
-   put LocalArray ["projectName"] into projectName   -- "lcw_Git"
+on menu_CreateGithubProject projectName
+   -- put LocalArray ["projectName"] into projectName   -- "lcw_Git"
    put LocalArray ["lcwRepoNames"] into lcwRepoNames
    put LocalArray ["gitFolder"] into gitFolder
    
@@ -166,8 +165,8 @@ end menu_DisplayGithubProjects
 on _
 end _
 
-on menu_FixRemote
-   put LocalArray ["projectName"] into projectName
+on menu_FixRemote projectName
+   -- put LocalArray ["projectName"] into projectName
    put LocalArray ["gitFolder"] into gitFolder
    put LocalArray ["gitRemoteAddress"] into gitRemoteAddress
    --
@@ -182,6 +181,13 @@ on menu_FixRemote
    --
    return shellResult
 end menu_FixRemote
+
+on _
+end _
+
+on submenu_Settings
+   return "Global | GIT | Settings | Menu"
+end submenu_Settings
 
 on submenu_Dev
    return "Dev | Menu"
@@ -205,18 +211,6 @@ on menu_DisplayGithubInfo
    put github_FindRepoName (gitRemoteAddress) into repoName
    display_GitHubInfo repoName
 end menu_DisplayGithubInfo
-
-on menu_DeleteInvisibleGitFolder arrayView
-   put LocalArray ["gitFolder"] into gitFolder
-   --
-   set the itemdelimiter to slash
-   put item -1 of gitFolder into projectName
-   put merge ("Are you sure you want to remove the local git repository and all it's history of file changes from the local project '[[projectName]]'?") into someQuestion
-   dispatch "lcw_AnswerSheet" to arrayView with someQuestion
-   
-   breakpoint -- be careful!
-   git_DeleteInvisibleRepoFolder gitFolder
-end menu_DeleteInvisibleGitFolder
 
 
 --> Dev | Props

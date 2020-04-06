@@ -15,6 +15,45 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 
 --> Working On
 -
+command git_CreateIgnoreFile pIsGlobal, pIgnoreType
+   put git_ConstructIgnoreText ("LF") into ignoreText
+   if pIsGlobal is true then
+      put git_GlobalIgnoreFile() into ignoreFile
+   else
+      put git_LocalIgnoreFile() into ignoreFile
+   end if 
+   put "binfile:" & ignoreFile into someUrl
+   put ignoreText into url someUrl
+   
+   put ignoreFile into bashFile
+   shell_BashParamEscape bashFile
+   if pIsGlobal is true then
+      put "git config --global core.excludesfile" && bashFile into someShell
+   else
+      put "touch" & bashFile into someShell
+   end if
+   git_ExecuteShell someShell
+   return ignoreFile
+end git_CreateIgnoreFile
+
+function git_ConstructIgnoreText pIgnoreType
+   switch pIgnoreType
+      case "LF"
+         put "*.gitignore" & LF after ignoreText
+         -- put "*.DS_Store" & LF after ignoreText
+         -- put "*.svn/*" & LF after ignoreText
+         --put "opn_Plugins/opn_Third/*" & lineEnding after ignoreText
+         return ignoreText
+      default -- case "CR"
+         put "*.gitignore" & LF after ignoreText
+         put "*.DS_Store" & CR after ignoreText
+         put ".svn*" & CR after ignoreText
+         put "*.gitignore" & CR after ignoreText
+         -- put "opn_Plugins/opn_Third/*" & lineEnding after ignoreText
+         return ignoreText
+   end switch
+end git_ConstructIgnoreText
+
 command git_CheckoutOurs someFile
    put "git checkout --theirs -- [[shortFile]]" into shellTemplate
    git_ExecuteMergedShell shellTemplate, someFile

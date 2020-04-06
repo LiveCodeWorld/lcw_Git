@@ -22,8 +22,8 @@ on menu_Init tObject
    -- do something when the menu first loads
 end menu_Init
 
-getprop disabled_DisplayGitStatus [displayView]
-   put the selected_Line of displayView into repoName
+getprop disabled_DisplayGitStatus [lineView]
+   put the selected_Line of lineView into repoName
    if exists (stack repoName) then
       return false
    else
@@ -31,11 +31,22 @@ getprop disabled_DisplayGitStatus [displayView]
    end if
 end disabled_DisplayGitStatus
 
+getprop disabled_DisplayProjectView [lineView]
+   put the selected_Line of lineView into repoName
+   --
+   put display_FindView ("Model and Libraries", repoName) into displayView
+   if exists (displayView) then
+      return false
+   else
+      return true
+   end if
+end disabled_DisplayProjectView
+
 
 --> Global | Github | Line | Menu
 -
-on menu_LaunchGithub displayView
-   put the selected_Line of displayView into repoName
+on menu_LaunchGithub lineView
+   put the selected_Line of lineView into repoName
    --
    github_Launch repoName
 end menu_LaunchGithub
@@ -43,12 +54,24 @@ end menu_LaunchGithub
 on _
 end _
 
-on menu_DisplayGitStatus displayView
-   put the selected_Line of displayView into repoName
+on menu_DisplayProjectView lineView
+   put the selected_Line of lineView into repoName
+   --
+   put display_FindView ("Model and Libraries", repoName) into displayView
+   --
+   object_GoTo displayView
+end menu_DisplayProjectView
+   
+on menu_DisplayGitStatus lineView
+   put the selected_Line of lineView into repoName
+   --
    put the name of stack repoName into sObject
    --
    display_GitStatus sObject
 end menu_DisplayGitStatus
+
+on _
+end _
 
 on submenu_Dev
    return "Dev | Menu"

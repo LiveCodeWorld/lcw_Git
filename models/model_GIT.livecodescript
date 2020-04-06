@@ -7,6 +7,35 @@ type: model
 version: 0.1
 
 
+--> Working on | Igonre
+-
+getprop git_IgnoreFile
+   -- a project .gitingore file
+   put the long id of the target into tObject
+   
+   put the project_Folder of tObject into projectFolder
+   put projectFolder & ".gitignore" into ignoreFile
+   return ignoreFile 
+end git_IgnoreFile
+
+getprop git_Project
+   put the git_Folder of the target into gitRootFolder
+   put git_GetProjectArray() into gitProjectArray
+   put gitProjectArray [gitRootFolder]["project name"] into projectName
+   return projectName
+end git_Project
+
+function git_LocalIgnoreFile
+   put git_GetRootFolder() & ".gitignore" into ignoreFile
+   return ignoreFile
+end git_LocalIgnoreFile
+
+function git_GlobalIgnoreFile
+   put $HOME & "/.gitignore" into ignoreFile
+   return ignoreFile
+end git_GlobalIgnoreFile
+
+
 --> Props
 -
 getprop git_ShortFolder
@@ -56,13 +85,6 @@ getprop git_WithinCheckoutFolder [pDontUseGit]
    end if
    return checkoutFolder is not empty
 end git_WithinCheckoutFolder
-
-getprop git_Project
-   put the git_Folder of the target into gitRootFolder
-   put git_GetProjectArray() into gitProjectArray
-   put gitProjectArray [gitRootFolder]["project name"] into projectName
-   return projectName
-end git_Project
 
 function git_Version
    git_ExecuteShell "git --version"
@@ -264,16 +286,6 @@ command git_SetFullPath @relativeFileOrFolder
    put baseFolder & relativeFileOrFolder into relativeFileOrFolder
    return true
 end git_SetFullPath
-
-function git_LocalIgnoreFile
-   put git_GetRootFolder() & ".gitignore" into ignoreFile
-   return ignoreFile
-end git_LocalIgnoreFile
-
-function git_GlobalIgnoreFile
-   put $HOME & "/.gitignore" into ignoreFile
-   return ignoreFile
-end git_GlobalIgnoreFile
 
 function git_PathToCommandLine
    return empty
