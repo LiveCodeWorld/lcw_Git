@@ -1,8 +1,8 @@
-﻿script "Global_Git_Line_Stack_Log_Menu"
+﻿script "Global | Git | Line | Stack | Log | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Git_Line_Stack_Log_Menu
+name: Global | Git | Line | Stack | Log | Menu
 type: controller
 version: 0.2
 

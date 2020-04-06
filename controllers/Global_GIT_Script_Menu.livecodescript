@@ -1,11 +1,10 @@
-﻿script "Global_GIT_Script_Menu"
+﻿script "Global | GIT | Script | Menu"
 --> MetaData
 -
-license: GPLv3
-name: Global_GIT_Script_Menu
-type: controller
 copyright: David Bovill
 license: GPLv3
+name: Global | GIT | Script | Menu
+type: controller
 version: 0.2
 
 
@@ -253,4 +252,3 @@ private function _GetSelectedTreeIsh treeField
    put cHash & ":" & someFile into treeish
    return treeish
 end _GetSelectedTreeIsh
-

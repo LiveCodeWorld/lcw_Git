@@ -1,8 +1,8 @@
-﻿script "Global_Github_Menu"
+﻿script "Global | Github | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Github_Menu
+name: Global | Github | Menu
 type: controller
 version: 0.1
 

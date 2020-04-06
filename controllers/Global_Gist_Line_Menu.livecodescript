@@ -1,8 +1,8 @@
-﻿script "Global_Gist_Line_Menu"
+﻿script "Global | Gist | Line | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Gist_Line_Menu
+name: Global | Gist | Line | Menu
 type: controller
 version: 0.1
 

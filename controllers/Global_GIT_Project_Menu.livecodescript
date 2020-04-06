@@ -1,8 +1,8 @@
-﻿script "Global_GIT_Project_Menu"
+﻿script "Global | GIT | Project | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_GIT_Project_Menu
+name: Global | GIT | Project | Menu
 type: controller
 version: 0.1
 

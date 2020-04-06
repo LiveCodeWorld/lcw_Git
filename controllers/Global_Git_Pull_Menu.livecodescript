@@ -1,8 +1,8 @@
-﻿script "Global_Git_Pull_Menu"
+﻿script "Global | Git | Pull | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Git_Pull_Menu
+name: Global | Git | Pull | Menu
 type: controller
 version: 0.1
 

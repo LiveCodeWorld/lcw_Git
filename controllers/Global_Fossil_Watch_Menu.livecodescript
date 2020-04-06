@@ -1,8 +1,8 @@
-﻿script "Global_Fossil_Watch_Menu"
+﻿script "Global | Fossil | Watch | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Fossil_Watch_Menu
+name: Global | Fossil | Watch | Menu
 type: controller
 version: 0.1
 
@@ -30,5 +30,3 @@ getprop disabled_DisplayLocalChanges [mTarget]
       return true -- "delete"
    end if
 end disabled_DisplayLocalChanges
-
-

@@ -1,8 +1,8 @@
-﻿script "Global_Gist_Display_Menu"
+﻿script "Global | Gist | Display | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Gist_Display_Menu
+name: Global | Gist | Display | Menu
 type: controller
 version: 0.1
 
@@ -12,10 +12,3 @@ version: 0.1
 on menu_Test mTarget
   put mTarget
 end menu_Test
-
-
---> Global | Gist | Display | Menu | Props
--
-
---> Global | Gist | Display | Menu | Disabled
--

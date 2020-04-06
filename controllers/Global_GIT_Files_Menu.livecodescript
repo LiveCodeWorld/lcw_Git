@@ -1,8 +1,8 @@
-﻿script "Global_GIT_Files_Menu"
+﻿script "Global | GIT | Files | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_GIT_Files_Menu
+name: Global | GIT | Files | Menu
 type: controller
 version: 0.1
 
@@ -127,4 +127,3 @@ end menu_DisplayOpnUntracked
 command git_RefreshDisplay
    answer "Here we should refresh any display"
 end git_RefreshDisplay
-

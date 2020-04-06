@@ -1,10 +1,11 @@
-﻿script "Global_Git_Diff_Raw_Menu"
+﻿script "Global | Git | Diff | Raw | Line | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_Git_Diff_Raw_Menu
+name: Global | Git | Diff | Raw | Line | Menu
 type: controller
 version: 0.1
+
 
 --> Variables
 -

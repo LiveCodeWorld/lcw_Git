@@ -1,10 +1,11 @@
-﻿script "Global_GIT_Branch_Menu"
+﻿script "Global | GIT | Branch | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_GIT_Branch_Menu
+name: Global | GIT | Branch | Menu
 type: controller
 version: 0.1
+
 
 --> Variables
 -
@@ -436,4 +437,3 @@ command git_DeconstructBranchNames @localBranchNames, @remoteBranches, @remoteNa
    delete char -1 of remoteBranchNames
    delete char -1 of remoteMappings
 end git_DeconstructBranchNames
-

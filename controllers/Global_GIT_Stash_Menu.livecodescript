@@ -1,13 +1,12 @@
-﻿script "Global_GIT_Stash_Menu"
+﻿script "Global | GIT | Stash | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_GIT_Stash_Menu
+name: Global | GIT | Stash | Menu
 type: controller
 version: 0.2
 
-/*
-This menu provides and interface to git's stash functionailty.
+/*This menu provides and interface to git's stash functionailty.
 It is designed to work with display views. Would be an interesting experiment to generalise that.
 
 Use git stash when you want to record the current state of the working directory and the index, but want to go back to a clean working directory. 
@@ -29,8 +28,7 @@ git stash ( pop | apply ) [--index] [-q|--quiet] [<stash>]
 git stash branch <branchname> [<stash>] 
 git stash [save [--patch] [-k|--[no-]keep-index] [-q|--quiet] [<message>]] 
 git stash clear 
-git stash create
-*/
+git stash create*/
 
 
 --> Menu | Props

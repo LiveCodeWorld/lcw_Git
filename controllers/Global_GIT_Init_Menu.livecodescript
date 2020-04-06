@@ -1,13 +1,12 @@
-﻿script "Global_GIT_Init_Menu"
+﻿script "Global | GIT | Init | Menu"
 --> MetaData
 -
 license: GPLv3
-name: Global_GIT_Init_Menu
+name: Global | GIT | Init | Menu
 type: controller
 version: 0.2
 
-/*
-This menu is for project displays. Typically an ndex_View with then menu_Target set to the project_Name.
+/*This menu is for project displays. Typically an ndex_View with then menu_Target set to the project_Name.
 
 getprop disabled_GitStatus
    if LocalArray ["gitIsActive"] is true then
@@ -15,8 +14,7 @@ getprop disabled_GitStatus
    else
       return "delete"
    end if
-end disabled_GitStatus
-*/
+end disabled_GitStatus*/
 
 
 --> Menu | Init
