@@ -15,6 +15,30 @@ The gist library is seperate and moving forwards we wil create individual librar
 
 --> Working on
 -
+function github_CreateStackWikiPage stackObject
+   /*
+   You can find the latest version of the script [here](../blob/master/[[relativePath]]).
+   
+   [[scriptHelp]]
+   
+   ## Handlers
+   
+   [[handlerList]]
+   */
+   put debug_GetCommentAbove() into mkTemplate
+   
+   put the script_MetaData of stackObject into scriptMetaData
+   put scriptMetaData ["script_Help"] into scriptHelp
+   put the project_Folder of stackObject into projectFolder
+   put the effective filename of stackObject into stackPath
+   put stackPath into relativePath
+   replace projectFolder with empty in relativePath
+   put script_GetHandlerMarkdown (stackObject, relativePath) into handlerList
+   
+   put merge (mkTemplate) into wikiMarkdown
+   return wikiMarkdown
+end github_CreateStackWikiPage
+
 function github_LivecodeWorldProjectExists projectName
    put github_ListOrgRepos() into lcwRepoNames
    put lcwRepoNames into LocalArray ["lcwRepoNames"]
@@ -235,33 +259,6 @@ function github_FindRepoName remoteAddress
    end repeat
    return empty
 end github_FindRepoName
-
-
---> GitHub | Wiki
--
-function github_CreateStackWikiPage stackObject
-   /*
-   You can find the latest version of the script [here](../blob/master/[[relativePath]]).
-   
-   [[scriptHelp]]
-   
-   ## Handlers
-   
-   [[handlerList]]
-   */
-   put script_GetCommentAboveMe() into mkTemplate
-   
-   put the script_MetaData of stackObject into scriptMetaData
-   put scriptMetaData ["script_Help"] into scriptHelp
-   put the project_Folder of stackObject into projectFolder
-   put the effective filename of stackObject into stackPath
-   put stackPath into relativePath
-   replace projectFolder with empty in relativePath
-   put script_GetHandlerMarkdown (stackObject, relativePath) into handlerList
-   
-   put merge (mkTemplate) into wikiMarkdown
-   return wikiMarkdown
-end github_CreateStackWikiPage
 
 
 --> GitHub | Issues

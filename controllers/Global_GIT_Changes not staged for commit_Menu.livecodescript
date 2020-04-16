@@ -1,4 +1,4 @@
-﻿script "Global|GIT|Changes not staged for commit|Menu"
+﻿script "Global | GIT | Changes not staged for commit | Menu"
 --> MetaData
 -
 license: GPLv3

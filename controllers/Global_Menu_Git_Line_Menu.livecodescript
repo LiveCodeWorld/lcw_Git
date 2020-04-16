@@ -42,33 +42,6 @@ on menu_DeleteEmptyCardMenu indexView
    end if
 end menu_DeleteEmptyCardMenu
 
-on _
-end _
-
-on menu_MakeGlobal indexView
-   _GetSelectedObjects indexView, cardObject, oldGitStackPath
-   put the script of cardObject into controllerScript
-   
-   breakpoint
-   -- put the project_Name of stack oldGitStackPath into projectName
-   put project_GetFolder ("lcw_Tools") into projectFolder
-   
-   put the menu_ScriptTitles of cardObject into mTitles
-   filter mTitles with "Global | * | Menu" 
-   put line 1 of mTitles into globalMenuTitle
-   if globalMenuTitle is empty then
-      answer warning "Can't find menu!"
-      breakpoint 
-      exit to top
-   end if
-   
-   breakpoint
-   project_CreateMenu projectFolder, globalMenuTitle
-   put the result into controllerStackObject
-   
-   edit the script of controllerStackObject
-end menu_MakeGlobal
-
 
 --> Global | Menu | Git | Line | Menu | Props
 -

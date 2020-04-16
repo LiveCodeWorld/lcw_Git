@@ -1,4 +1,4 @@
-﻿script "--> Global|GIT|Changes to be committed|New file|File|Menu"
+﻿script "Global | GIT | Changes to be committed | New file | File | Menu"
 --> MetaData
 -
 license: GPLv3

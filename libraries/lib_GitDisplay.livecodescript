@@ -12,7 +12,7 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 */
 
 
---> Git | Display | Status | Events
+--> Events
 -
 on saveStackRequest
    -- update the Git Status displays
@@ -29,6 +29,13 @@ on saveStackRequest
    pass saveStackRequest -- or the stack won't be saved
 end saveStackRequest
 
+
+--> Working on
+-
+
+
+--> Git | Display | Events
+-
 on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
    text_AddTrailing gitCheckoutFolder, slash
@@ -50,6 +57,37 @@ on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
          break
    end switch
 end mDoubleUp_DisplayGitFile
+
+command display_GitPushCurrentBranch gitFolder
+   put git_CurrentBranchName (gitFolder) into currentBranchName
+   put "git push origin" && kwote (currentBranchName) into someShell
+   --
+   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
+   --
+   switch
+      case shellResult begins with "Broken pipe"
+         break
+      case token 1 of shellResult = "Error"
+         /*
+         ERROR: Your account is disabled. Please see https://github.com/account/billing
+         fatal: Could not read from remote repository.
+         
+         Please make sure you have the correct access rights
+         and the repository exists.
+         */
+         put "Check billing" into btnText
+         answer shellResult with btnText or "Cancel"
+         if it is btnText then
+            launch url "https://github.com/account/billing"
+         end if
+         break
+      default
+         lcw_Notify shellResult
+         --
+         env_DeconstructProjectFolder gitFolder, projectName, repoFolder
+         display_GitRefreshProjectName projectName
+   end switch
+end display_GitPushCurrentBranch
 
 
 --> Display | GIT
@@ -74,9 +112,6 @@ command display_GitRefreshProjectName gitProjectName
    end if
 end display_GitRefreshProjectName
 
-
---> Display | GIT | Folder
--
 command display_GitProjectStatus projectName
    put project_GetFolder (projectName) into projectFolder
    if there is not a folder projectFolder then
@@ -148,41 +183,7 @@ command git_RefreshDisplay pTreeTitle
 end git_RefreshDisplay
 
 
---> Display | GIT | Push
--
-command display_GitPushCurrentBranch gitFolder
-   put git_CurrentBranchName (gitFolder) into currentBranchName
-   put "git push origin" && kwote (currentBranchName) into someShell
-   --
-   put git_ExecuteShellCommand (someShell, gitFolder) into shellResult
-   --
-   switch
-      case shellResult begins with "Broken pipe"
-         break
-      case token 1 of shellResult = "Error"
-         /*
-         ERROR: Your account is disabled. Please see https://github.com/account/billing
-         fatal: Could not read from remote repository.
-         
-         Please make sure you have the correct access rights
-         and the repository exists.
-         */
-         put "Check billing" into btnText
-         answer shellResult with btnText or "Cancel"
-         if it is btnText then
-            launch url "https://github.com/account/billing"
-         end if
-         break
-      default
-         lcw_Notify shellResult
-         --
-         env_DeconstructProjectFolder gitFolder, projectName, repoFolder
-         display_GitRefreshProjectName projectName
-   end switch
-end display_GitPushCurrentBranch
-
-
---> Display| Git |Dynamic Line Menus
+--> Display| Git | Dynamic Line Menus
 -
 getprop git_StatusMenuTitle
    -- only used by "menu_Title" in the line_Menu of the dynamically created Git Status display_Array as set in arrayView script
@@ -287,46 +288,6 @@ command display_Gists pHow
    end switch
    display_Index gistList, "gist_FetchFiles(),Gists", "Global | Gist | Menu", "Global | Gist | Line | Menu", "gistMouseUp", "gistMouseDoubleUp"
 end display_Gists
-
-
---> Display | GitHub
--
-command display_GithubProjects pOrgName
-   put "Github Repos" into displayStackLabel
-   if pOrgName is empty then
-      put "LiveCodeWorld" into pOrgName
-   end if
-   
-   -- same as github_ListOrgRepos (pOrgName) but we can now store githubOrgRepoAray
-   put github_FetchOrgRepoAray (pOrgName) into githubOrgRepoAray
-   repeat for each key repoNum in githubOrgRepoAray
-      put githubOrgRepoAray [repoNum]["name"] into repoName
-      put repoName & CR after orgRepoNames
-   end repeat
-   delete char -1 of orgRepoNames
-   sort orgRepoNames
-   --
-   put display_FindView (displayStackLabel, pOrgName) into displayView
-   --
-   if exists (displayView) is true then
-      set the view_Index of displayView to orgRepoNames
-   else
-      display_Lines orgRepoNames, pOrgName, "mouseDoubleUp_GitHub", displayStackLabel, true
-      put the result into displayView
-      --
-      set the title_Menu of displayView to "Global | Github | Menu"
-      set the line_Menu of displayView to "Global | Github | Line | Menu"
-   end if
-   --
-   set the github_OrgRepoAray of displayView to githubOrgRepoAray
-   --
-   return displayView
-end display_GithubProjects
-
-command display_GitHubInfo repoName
-   put github_FetchRepoArray (repoName) into repoArray
-   display_Array repoArray
-end display_GitHubInfo
 
 
 --> Display | GIT | Stack
