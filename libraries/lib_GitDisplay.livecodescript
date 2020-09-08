@@ -32,6 +32,19 @@ end saveStackRequest
 
 --> Working on
 -
+command display_GitProjectStatus projectName
+   put env_GetProjectFolder (projectName) into gitFolder
+   if gitFolder is empty then
+      display_DebugHistory "display_GitProjectStatus"
+      --
+      put merge ("Cannot find project '[[projectName]]'") into someQuestion
+      lcw_AnswerWarning someQuestion
+   end if
+   --
+   display_GitFolderStatus gitFolder
+   put the result into arrayView
+   return arrayView
+end display_GitProjectStatus
 
 
 --> Git | Display | Events
@@ -92,10 +105,9 @@ end display_GitPushCurrentBranch
 
 --> Display | GIT
 -
-command display_GitStatus pScriptObject
-   if pScriptObject is empty then put the long id of the target into pScriptObject
-   put the git_Folder of pScriptObject into gitCheckoutFolder
-   
+command display_GitStatus sObject
+   put the git_Folder of sObject into gitCheckoutFolder
+   --
    display_GitFolderStatus gitCheckoutFolder
    put the result into arrayView
    return arrayView

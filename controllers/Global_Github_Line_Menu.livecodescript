@@ -18,23 +18,41 @@ local LocalArray
 
 --> Menu | Init
 -
-on menu_Init tObject   
-   -- do something when the menu first loads
-end menu_Init
+getprop menu_Target [tObject]
+   put the selected_Line of tObject into repoProjectName
+   return repoProjectName
+end menu_Target
 
-getprop disabled_DisplayGitStatus [lineView]
-   put the selected_Line of lineView into repoName
-   if exists (stack repoName) then
+getprop disabled_CreateGithubProjectPages [repoProjectName]
+   put LocalArray ["wikiFolder"] into wikiFolder
+   if there is a folder wikiFolder then
+      return false
+   else
+      return true
+   end if
+end disabled_CreateGithubProjectPages
+
+getprop disabled_AddProjectWiki [repoProjectName]
+   if LocalArray ["gitHubRepoExists"] is false then return "true"
+   
+   put LocalArray ["wikiFolder"] into wikiFolder
+   if there is a folder wikiFolder then
+      return "delete"
+   else
+      return false
+   end if
+end disabled_AddProjectWiki
+
+getprop disabled_DisplayGitStatus [repoProjectName]
+   if exists (stack repoProjectName) then
       return false
    else
       return true
    end if
 end disabled_DisplayGitStatus
 
-getprop disabled_DisplayProjectView [lineView]
-   put the selected_Line of lineView into repoName
-   --
-   put display_FindView ("Model and Libraries", repoName) into displayView
+getprop disabled_DisplayProjectView [repoProjectName]
+   put display_FindView ("Model and Libraries", repoProjectName) into displayView
    if exists (displayView) then
       return false
    else
@@ -45,27 +63,57 @@ end disabled_DisplayProjectView
 
 --> Global | Github | Line | Menu
 -
-on menu_LaunchGithub lineView
-   put the selected_Line of lineView into repoName
-   --
-   github_Launch repoName
-end menu_LaunchGithub
+on menu_LaunchGithubProject repoProjectName
+   github_Launch repoProjectName
+end menu_LaunchGithubProject
 
 on _
 end _
 
-on menu_DisplayProjectView lineView
-   put the selected_Line of lineView into repoName
-   --
-   put display_FindView ("Model and Libraries", repoName) into displayView
-   --
-   object_GoTo displayView
-end menu_DisplayProjectView
+on menu_AddProjectWiki repoProjectName
+   breakpoint -- not finished
    
-on menu_DisplayGitStatus lineView
-   put the selected_Line of lineView into repoName
+   put repoProjectName & ".wiki" into wikiProjectName
+   
+   answer folder "Select a folder containing a project..."
+   put it into projectFolder
+   if it is empty then exit to top
+   if projectFolder ends with ".wiki" is false then
+      answer warning "Not a GitHub wiki project"
+      exit to top
+   end if
+   
+   put projectFolder into projectArray ["projectFolder"]
+   put "wiki" into projectArray ["projectType"]
+   library_StoreProjectArray wikiProjectName, projectArray
+   
+   display_LcwProjectList
+end menu_AddProjectWiki
+
+on menu_CreateGithubProjectPages repoProjectName
+   lcw_Answer "Add new wiki pages for each project stackto the local github project"
    --
-   put the name of stack repoName into sObject
+   put LocalArray ["wikiFolder"] into wikiFolder
+   put LocalArray ["displayView"] into displayView
+   put the view_Index of displayView into stackNames
+   --
+   repeat for each line stackName in stackNames
+      put wikiFolder & stackName & ".md" into wikiPageFile
+      if there is a file wikiPageFile then
+         breakpoint
+      else
+         put the github_WikiPage of stack stackName into wikiMarkdown
+         put "file:" & wikiPageFile into someURL
+         put wikiMarkdown into url someURL
+      end if
+   end repeat
+end menu_CreateGithubProjectPages
+
+on _
+end _
+
+on menu_DisplayGitStatus repoProjectName
+   put the name of stack repoProjectName into sObject
    --
    display_GitStatus sObject
 end menu_DisplayGitStatus
@@ -80,10 +128,14 @@ end submenu_Dev
 
 --> Dev | Menu
 -
-on menu_DisplayGithubRepoArray displayView
-   put the selected_Line of displayView into repoName
+on menu_FindProjectView repoProjectName
+   put display_FindView ("Model and Libraries", repoProjectName) into displayView
    --
-   put github_FetchRepoArray (repoName) into repoArray
+   object_GoTo displayView
+end menu_FindProjectView
+
+on menu_DisplayGithubRepoArray repoProjectName
+   put github_FetchRepoArray (repoProjectName) into repoArray
    --
-   display_Array repoArray, repoName
+   display_View repoArray, repoProjectName
 end menu_DisplayGithubRepoArray

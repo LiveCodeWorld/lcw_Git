@@ -15,6 +15,156 @@ The gist library is seperate and moving forwards we wil create individual librar
 
 --> Working on
 -
+command go_GitHubProject projectName
+   if exists (stack projectName) then
+      delete stack projectName
+   end if
+   --
+   put github_ConstructProjectUrl (projectName) into rawURL
+   go to stack url rawURL
+   --
+   return the result
+end go_GitHubProject
+
+command go_GitHubModule moduleName, projectName
+   if exists (stack moduleName) then
+      delete stack moduleName
+   end if
+   --
+   put github_ConstructModuleUrl (moduleName, projectName) into rawURL
+   go to stack url rawURL
+   --
+   return the result
+end go_GitHubModule
+
+function github_ConstructProjectUrl projectName
+   -- https://github.com/LiveCodeWorld/lcw_Caddy/raw/master/lcw_Caddy.livecode
+   put merge ("https://github.com/LiveCodeWorld/[[projectName]]/raw/master/[[projectName]].livecode") into someURL
+   return someURL
+end github_ConstructProjectUrl
+
+function github_ConstructModuleUrl moduleName, projectName
+   -- https://github.com/LiveCodeWorld/lcw_Governance/blob/master/modules/View_Governance_Person/View_Governance_Person.livecode?raw=true
+   -- put "View_Governance_Person" into moduleName
+   -- put "View_Governance_Person.livecode" into shortFile
+   
+   view_NormalizePiped moduleName -- just in case
+   put moduleName into shortModuleFolder
+   replace "|" with "_" in shortModuleFolder
+   put shortModuleFolder & ".livecode" after shortFile
+   --
+   put merge ("https://github.com/LiveCodeWorld/[[projectName]]/blob/master/modules/[[shortModuleFolder]]/[[shortFile]]?raw=true") into someURL
+   return someURL
+end github_ConstructModuleUrl
+
+function github_ConstructLaunchUrl stackName
+   if exists (stack stackName) is false then return empty
+   
+   put the long id of stack stackName into tObject
+   --
+   put the filename of tObject into stackPath
+   put the project_Name of tObject into repoName
+   put the script_Type of tObject into scriptType
+   --
+   put github_GetLaunchUrl (repoName, stackPath, scriptType, stackName) into githubURL
+   return githubURL
+end github_ConstructLaunchUrl
+
+function github_GetLaunchUrl pRepoName, pPath, scriptType, stackName
+   if pRepoName is empty then
+      return "https://github.com/LiveCodeWorld"
+   end if
+   
+   put github_FetchRepoArray (pRepoName) into repoArray
+   put github_ExtractHtmlUrl (repoArray) into githubURL
+   if pPath is empty then
+      return githubURL & pPath
+   end if
+   
+   switch scriptType
+      case "transport"
+         -- https://github.com/LiveCodeWorld/lcw_Controllers
+         -- /blob/master/
+         -- controllers/ward.lc
+         put "/blob/master/controllers/" & stackName into relPath
+         break
+      default
+         -- https://github.com/LiveCodeWorld/lcw_Script
+         -- /blob/master/
+         -- libraries/lib_Help.livecodescript
+         put "/blob/master/" after githubURL
+         put _MakeStackPathRelative (pPath) into relPath
+   end switch
+   
+   put relPath after githubURL
+   --
+   return githubURL
+end github_GetLaunchUrl
+
+private function _MakeStackPathRelative pPath
+   if char 1 of pPath is not "/" then
+      -- assume it is already relative
+      return pPath
+   end if
+   
+   if exists (stack pPath) then
+      put the project_Folder of stack pPath into projectFolder
+      set the itemdelimiter to slash
+      put the number of items of projectFolder into firstItemNum
+      put pPath into relPath
+      delete item 1 to firstItemNum of relPath
+      return relPath
+   else
+      breakpoint
+      return pPath
+   end if
+end _MakeStackPathRelative
+
+
+--> Github | Orgs
+-
+function github_ListOrgRepos pOrgName
+   put github_FetchOrgRepoAray (pOrgName) into githubOrgRepoAray
+   repeat for each key repoNum in githubOrgRepoAray
+      put githubOrgRepoAray [repoNum]["name"] into repoName
+      put repoName & CR after orgRepoNames
+   end repeat
+   delete char -1 of orgRepoNames
+   sort orgRepoNames
+   --
+   return orgRepoNames
+end github_ListOrgRepos
+
+function github_ListMissingLocalRepos
+   put env_ListLocalProjects() into localProjects
+   --
+   set the wholematches to true
+   put github_FetchOrgRepoAray () into githubOrgRepoAray
+   repeat for each key repoNum in githubOrgRepoAray
+      put githubOrgRepoAray [repoNum]["name"] into repoName
+      --
+      if repoName is not among the lines of localProjects then
+         put repoName & CR after missingRepoNames
+      end if
+   end repeat
+   delete char -1 of missingRepoNames
+   return missingRepoNames
+end github_ListMissingLocalRepos
+
+function github_ListNotOnGithub
+   put env_ListLocalProjects() into localProjects
+   put github_ListOrgRepos () into repoProjectNames
+   --
+   set the wholematches to true
+   repeat for each line projectName in localProjects
+      if projectName is not among the lines of repoProjectNames then
+         put projectName & CR after notInRepoNames
+      end if
+   end repeat
+   delete char -1 of notInRepoNames
+   return notInRepoNames
+end github_ListNotOnGithub
+
 function github_CreateStackWikiPage stackObject
    /*
    You can find the latest version of the script [here](../blob/master/[[relativePath]]).
@@ -101,67 +251,6 @@ function github_GetHandlerURL sObject, pStartLineNum, pEndLineNum
    end if
    return githubURL
 end github_GetHandlerURL
-
-function github_ConstructLaunchUrl stackName
-   if exists (stack stackName) is false then return empty
-   
-   put the filename of stack stackName into stackPath
-   put the project_Name of stack stackPath into repoName
-   put the script_Type of tObject into scriptType
-   --
-   put github_GetLaunchUrl (repoName, stackPath, scriptType, stackName) into githubURL
-   return githubURL
-end github_ConstructLaunchUrl
-
-function github_GetLaunchUrl pRepoName, pPath, scriptType, stackName
-   if pRepoName is empty then
-      return "https://github.com/LiveCodeWorld"
-   end if
-   
-   put github_FetchRepoArray (pRepoName) into repoArray
-   put github_ExtractHtmlUrl (repoArray) into githubURL
-   if pPath is empty then
-      return githubURL & pPath
-   end if
-   
-   switch scriptType
-      case "transport"
-         -- https://github.com/LiveCodeWorld/lcw_Controllers
-         -- /blob/master/
-         -- controllers/ward.lc
-         put "/blob/master/controllers/" & stackName into relPath
-         break
-      default
-         -- https://github.com/LiveCodeWorld/lcw_Script
-         -- /blob/master/
-         -- libraries/lib_Help.livecodescript
-         put "/blob/master/" after githubURL
-         put _MakeStackPathRelative (pPath) into relPath
-   end switch
-   
-   put relPath after githubURL
-   --
-   return githubURL
-end github_GetLaunchUrl
-
-private function _MakeStackPathRelative pPath
-   if char 1 of pPath is not "/" then
-      -- assume it is already relative
-      return pPath
-   end if
-   
-   if exists (stack pPath) then
-      put the project_Folder of stack pPath into projectFolder
-      set the itemdelimiter to slash
-      put the number of items of projectFolder into firstItemNum
-      put pPath into relPath
-      delete item 1 to firstItemNum of relPath
-      return relPath
-   else
-      breakpoint
-      return pPath
-   end if
-end _MakeStackPathRelative
 
 function script_GetHandlerMarkdown tObject, relativePath
    put the revAvailableHandlers of tObject into handlerTable
@@ -333,18 +422,6 @@ command github_CreateOrgRepo rName, rDesc, pOrgName, pHomePage
    put the result into postResult
    return postResult
 end github_CreateOrgRepo
-
-function github_ListOrgRepos pOrgName
-   put github_FetchOrgRepoAray (pOrgName) into githubOrgRepoAray
-   repeat for each key repoNum in githubOrgRepoAray
-      put githubOrgRepoAray [repoNum]["name"] into repoName
-      put repoName & CR after orgRepoNames
-   end repeat
-   delete char -1 of orgRepoNames
-   sort orgRepoNames
-   --
-   return orgRepoNames
-end github_ListOrgRepos
 
 function github_ExtractHtmlUrl repoArray
    put repoArray ["html_url"] into githubURL

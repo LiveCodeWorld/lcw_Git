@@ -5,7 +5,7 @@ name: lib_Git
 type: library
 copyright: David Bovill
 license: GPLv3
-version: 0.82
+version: 0.9
 
 /*
 A library for working with GIT.
@@ -15,6 +15,22 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 
 --> Working On
 -
+getprop git_StatusArray
+   put the git_Folder of the target into gitFolder
+   put git_GetStatusArray (gitFolder) into gitStatusArray
+   return gitStatusArray
+end git_StatusArray
+
+function git_ProjectIsClean projectName
+   put env_GetProjectFolder (projectName) into gitFolder
+   put git_FetchStatusTable (gitFolder) into gitStatusTable
+   --
+   get word 1 to -1 of gitStatusTable
+   put line -1 of it into lastGitLine
+   put lastGitLine = "nothing to commit, working tree clean" into isClean
+   return isClean
+end git_ProjectIsClean
+
 command git_CreateIgnoreFile pIsGlobal, pIgnoreType
    put git_ConstructIgnoreText ("LF") into ignoreText
    if pIsGlobal is true then
@@ -85,10 +101,6 @@ function git_ListUntrackedFiles gitFolder
 end git_ListUntrackedFiles
 
 function git_GetStatusArray gitCheckoutFolder
-   if there is not a folder gitCheckoutFolder then
-      -- breakpoint
-      return empty
-   end if
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
    put git_ConstructStatusArray (gitStatusTable) into statusArray
    array_StripEmptyKeys statusArray

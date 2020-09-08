@@ -29,7 +29,7 @@ command display_GithubProjects pOrgName
       put "LiveCodeWorld" into pOrgName
    end if
    --
-   put "mouseDoubleUp_GitHub" into mDoubleUp
+   put "mouseDoubleUp_GitHub" into mDoubleClick
    put "Global | Github | Menu" into titleMenu
    put "Global | Github | Line | Menu" into lineMenu
    
@@ -47,14 +47,24 @@ command display_GithubProjects pOrgName
    if exists (displayView) is true then
       set the view_Index of displayView to orgRepoNames
    else
-      display_Lines orgRepoNames, pOrgName, mDoubleUp, displayStackLabel, true
+      -- display_Lines orgRepoNames, pOrgName, mDoubleClick, displayStackLabel, true
+      display_Data orgRepoNames, pOrgName, displayStackLabel
       put the result into displayView
       --
       set the title_Menu of displayView to titleMenu
       set the line_Menu of displayView to lineMenu
+      set the mouse_DoubleClick of displayView to mDoubleClick
    end if
    --
    set the github_OrgRepoAray of displayView to githubOrgRepoAray
+   --
+   put env_ListLocalProjects() into localProjects
+   put github_ListMissingLocalRepos() into missingRepoNames
+   --
+   lock screen
+   set the coloured_Lines ["dark green"] of displayView to localProjects
+   set the coloured_Lines ["orange"] of displayView to missingRepoNames
+   unlock screen
    --
    return displayView
 end display_GithubProjects
