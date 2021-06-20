@@ -23,7 +23,7 @@ end disabled_GitStatus*/
 
 local LocalArray
 
-on menu_Init tObject
+getprop menu_Target [tObject]
    put the view_Object of tObject into displayView
    put "LivecodeWorld" into LocalArray ["orgName"]
    
@@ -49,10 +49,7 @@ on menu_Init tObject
    
    put github_LivecodeWorldProjectExists (projectName) into gitHubRepoExists
    put gitHubRepoExists into LocalArray ["gitHubRepoExists"]
-end menu_Init
-
-getprop menu_Target [tObject]
-   put LocalArray ["projectName"] into projectName
+   --
    return projectName
 end menu_Target
 
@@ -154,11 +151,16 @@ on menu_CreateGithubProject projectName
    put remoteSshUrl
 end menu_CreateGithubProject
 
-on menu_DisplayGithubProjects
+on menu_LaunchGithubProject projectName
+   put the github_LaunchURL of stack projectName into someURL
+   launch url someURL
+end menu_LaunchGithubProject
+
+on menu_DisplayGithubOrg
    put LocalArray ["orgName"] into orgName
    --
    display_GithubProjects orgName
-end menu_DisplayGithubProjects
+end menu_DisplayGithubOrg
 
 on _
 end _

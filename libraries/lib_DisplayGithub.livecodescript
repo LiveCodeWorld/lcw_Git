@@ -13,23 +13,38 @@ version: 0.1
 --> Working on
 -
 
-
 --> Display | Events
 -
-on mouseDoubleUp_GitHub displayView, sdaf
-   put the params
-end mouseDoubleUp_GitHub
+on mDoubleUp_GitHub treeField, projectName
+   if the optionKey is down then breakpoint
+   --
+   if exists (stack projectName) then
+      put the name of stack projectName into sObject
+      --
+      display_GitStatus sObject
+   else
+      put env_ConstructProjectFolder (projectName) into gitCheckoutFolder
+      display_GitFolderStatus gitCheckoutFolder
+   end if
+end mDoubleUp_GitHub
 
 
---> Display | GitHub
+--> Display | LCW | Projects
 -
 command display_GithubProjects pOrgName
-   put "Github Repos" into displayStackLabel
-   if pOrgName is empty then
-      put "LiveCodeWorld" into pOrgName
-   end if
+   put github_ListOrgRepos (pOrgName) into orgRepoNames
    --
-   put "mouseDoubleUp_GitHub" into mDoubleClick
+   display_Data orgRepoNames, "Projects in Github", "LCW"
+   put the result into displayView
+   display_SetInteractions displayView, "LCW | Projects", "mDoubleUp_GitHub"
+   return displayView
+end display_GithubProjects
+
+command display_GithubProjects pOrgName
+   put "Github Repos" into displayStackLabel
+   if pOrgName is empty then put "LiveCodeWorld" into pOrgName
+   --
+   put "mDoubleUp_GitHub" into mDoubleClick
    put "Global | Github | Menu" into titleMenu
    put "Global | Github | Line | Menu" into lineMenu
    
@@ -53,7 +68,7 @@ command display_GithubProjects pOrgName
       --
       set the title_Menu of displayView to titleMenu
       set the line_Menu of displayView to lineMenu
-      set the mouse_DoubleClick of displayView to mDoubleClick
+      set the mouse_DoubleUp of displayView to mDoubleClick
    end if
    --
    set the github_OrgRepoAray of displayView to githubOrgRepoAray

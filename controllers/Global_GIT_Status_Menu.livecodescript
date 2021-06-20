@@ -200,5 +200,5 @@ end menu_ArrayViewBehavior
 private command refreshGitStatus
    put LocalArray ["projectName"] into projectName
    display_GitRefreshProjectName projectName
-   return truewordOffset(stringToFind, stringToSearch )
+   return true
 end refreshGitStatus

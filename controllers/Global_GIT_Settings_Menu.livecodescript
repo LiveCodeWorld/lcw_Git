@@ -11,48 +11,50 @@ version: 0.2
 -
 local LocalArray
 
-on menu_Init tObject
-   put _CheckProjectName (tObject) into projectName
-   if projectName is empty then return false
-   
-   put projectName into LocalArray ["projectName"]
-   put the git_Folder of stack projectName into gitFolder
-   put gitFolder into LocalArray ["gitFolder"]
-   return true
-end menu_Init
-
 getprop menu_Target [tObject]
-   put LocalArray ["gitFolder"] into gitFolder
-   return gitFolder
+   put the display_View of tObject into displayView
+   --
+   put the title_Text of displayView into projectName   
+   put projectName into LocalArray ["projectName"]
+   --
+   put env_ConstructProjectFolder (projectName) into projectFolder    
+   put git_LocalIgnoreFile (projectFolder) into ignoreFile
+   put there is a file ignoreFile into LocalArray ["localIgnoreExists"]
+   --
+   return projectFolder
 end menu_Target
 
-getprop overwriteIgnoreFile_Params [mTarget]
+getprop documentation_Params
+   return the hkey_CaseConditions ["M menu_Documentation"] of me
+end documentation_Params
+   
+getprop disabled_CreateLocalGitIgnoreFile [projectFolder]
+   return LocalArray ["localIgnoreExists"]
+end disabled_CreateLocalGitIgnoreFile
+
+getprop disabled_EditLocalGitIgnoreFile [projectFolder]
+   return LocalArray ["localIgnoreExists"] is false
+end disabled_EditLocalGitIgnoreFile
+
+getprop disabled_CreateGlobalGitIgnoreFile [projectFolder]
+   put git_GlobalIgnoreFile (projectFolder) into ignoreFile
+   put there is not a file ignoreFile into noGlobalIgnore
+   return noGlobalIgnore
+end disabled_CreateGlobalGitIgnoreFile
+
+getprop overwriteIgnoreFile_Params [projectFolder]
    return "Global,Local"
 end overwriteIgnoreFile_Params
 
-getprop testIgnoreFile_Params [mTarget]
+getprop testIgnoreFile_Params [projectFolder]
    return "Global,Local"
 end testIgnoreFile_Params
-   
-private function _CheckProjectName tObject
-   -- let's check we are working with an indexView
-   put the view_Object of tObject into displayView
-   if exists (displayView) is false then return empty
-   
-   -- put displayView into LocalArray ["displayView"]
-   put the title_Text of displayView into projectName
-   if there is a stack projectName then      
-      return projectName
-   else
-      return empty
-   end if
-end _CheckProjectName
 
 
 --> Global | GIT | Settings | Menu
 -
-on menu_DisplayGitRemote gitFolder
-   put git_GetRemoteAddress (gitFolder) into remoteAddress
+on menu_DisplayGitRemote projectFolder
+   put git_GetRemoteAddress (projectFolder) into remoteAddress
    --
    put remoteAddress
    /*
@@ -68,21 +70,48 @@ on menu_DisplayGitConfig
    display_Text shellResult, "git config --list"
 end menu_DisplayGitConfig
 
+on menu_Documentation projectFolder, whichDoc
+   switch whichDoc
+      case "Git Ignore"
+         launch url "https://docs.github.com/en/free-pro-team@latest/github/using-git/ignoring-files"
+         break
+      case "Git Config"
+         break
+   end switch
+end menu_Documentation
+
 on _
 end _
 
-on menu_EditLocalGitIgnoreFile
-   put git_LocalIgnoreFile() into ignoreFile
-   if there is not a file ignoreFile then
-      answer "Create and edit new global .ignore file in the $HOME directory?" with "Cancel" and "OK"
-      if it is "Cancel" then exit to top
-      --
-      git_CreateIgnoreFile true
-   end if
+on menu_CreateLocalGitIgnoreFile projectFolder
+   put git_LocalIgnoreFile (projectFolder) into ignoreFile
+   lcw_Answer "Create and edit new local .ignore file in the local project directory?"
    --
-   display_TextFile ignoreFile, "Git Ignore Files"
-   edit_TextFile ignoreFile
+   git_CreateLocalIgnoreFile projectFolder
+   put the result into shellResult
+   return ignoreFile
+end menu_CreateLocalGitIgnoreFile
+
+on menu_EditLocalGitIgnoreFile projectFolder
+   put git_LocalIgnoreFile (projectFolder) into ignoreFile
+   atom_DisplayFile ignoreFile
 end menu_EditLocalGitIgnoreFile
+
+on menu_AddGitIgnore
+   -- git add .gitignore
+end menu_AddGitIgnore
+
+on _
+end _
+
+on menu_CreateGlobalGitIgnoreFile projectFolder
+   put git_GlobalIgnoreFile() into ignoreFile
+   answer "Create and edit new global .ignore file in the $HOME directory?" with "Cancel" and "OK"
+   if it is "Cancel" then exit to top
+   --
+   git_CreateGlobalIgnoreFile projectFolder
+   put the result into ignoreFile
+end menu_CreateGlobalGitIgnoreFile
 
 on menu_EditGlobalGitIgnoreFile
    put git_GlobalIgnoreFile() into ignoreFile
@@ -93,7 +122,7 @@ on menu_EditGlobalGitIgnoreFile
    end if
    
    display_TextFile ignoreFile, "Git Ignore Files"
-   edit_TextFile ignoreFile
+   atom_Edit ignoreFile
 end menu_EditGlobalGitIgnoreFile
 
 on _

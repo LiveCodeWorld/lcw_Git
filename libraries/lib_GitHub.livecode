@@ -15,7 +15,136 @@ The gist library is seperate and moving forwards we wil create individual librar
 
 --> Working on
 -
-command go_GitHubProject projectName
+command github_Launch repoName, pPath
+   put github_URLFromPath (pPath, repoName) into githubURL
+   launch url githubURL
+end github_Launch
+
+getprop github_LaunchURL
+   put the stack_Name of the target into stackName
+   put github_ConstructLaunchUrl (stackName) into githubURL
+   return githubURL
+end github_LaunchURL
+
+function github_ConstructLaunchUrl stackName, pRepoName
+   if exists (stack stackName) is false then return empty
+   put the project_Name of stack stackName into repoName
+   put github_GetUrl (stackName, pRepoName) into githubURL
+   return githubURL
+end github_ConstructLaunchUrl
+
+
+--> Github | Props
+-
+getprop github_URL
+   put the stack_Name of the target into stackName
+   put github_GetUrl (stackName) into githubURL
+   return githubURL
+end github_URL
+
+getprop github_HandlerURL [shortHkey]
+   put the long id of the target into hObject
+   put the hkey_Line [shortHkey] of hObject into hTableLine
+   if hTableLine is empty then return empty
+   --
+   put word 2 of hTableLine into hName
+   put word 3 of hTableLine + 1 into sLineNum
+   put word 4 of hTableLine + 1 into eLineNum
+   --
+   put github_GetHandlerURL (hObject, sLineNum, eLineNum) into githubURL 
+   return githubURL
+end github_HandlerURL
+
+getprop github_WikiPage
+   put the stack_Object of the target into stackObject
+   put github_CreateStackWikiPage (stackObject) into mdLines
+   return mdLines
+end github_WikiPage
+
+getprop github_RelativePath
+   put the stack_Object of the target into sObject
+   set the itemdelimiter to slash
+   put the number of items of the engine folder + 2 into sNum
+   get the filename of sObject
+   put item sNum  to -1 of it into relPath
+   return relPath
+end github_RelativePath
+
+
+--> Github | URL
+-
+function github_GetUrl stackName, pRepoName
+   put the effective filename of stack stackName into stackPath
+   put github_URLFromPath (stackPath, pRepoName) into githubURL
+   return githubURL
+end github_GetUrl
+
+function github_TransportURL shortFile, pRepoName
+   -- need to switch stacks for .lc scripts
+   -- https://github.com/LiveCodeWorld/lcw_Controllers
+   -- /blob/master/
+   -- controllers/ward.lc
+   
+   put github_GetRepoUrl (pRepoName) into githubURL
+   put "/lcw_Controllers/blob/master/controllers/" & shortFile into relPath
+   put relPath after githubURL
+   return githubURL
+end github_TransportURL
+
+function github_URLFromPath somePath, pRepoName
+   -- https://github.com/LiveCodeWorld/lcw_Script
+   -- /blob/master/
+   -- libraries/lib_Help.livecodescript
+   
+   put env_GetRepoFolder() into repoFolder
+   put git_FindCheckoutFolder (somePath) into checkoutFolder
+   if checkoutFolder begins with repoFolder is false then return empty
+   
+   set the itemdelimiter to slash
+   put the number of items of repoFolder + 1 into projectRootNum
+   put item projectRootNum of somePath into projectName
+   delete item 1 to projectRootNum of somePath
+   --
+   put github_GetRepoUrl (pRepoName) & slash into githubURL
+   put projectName & "/blob/master/" after githubURL
+   put somePath after githubURL
+   return githubURL
+end github_URLFromPath
+
+function github_GetRepoUrl pRepoName
+   if pRepoName is empty then return "https://github.com/LiveCodeWorld"
+   --
+   put github_FetchRepoArray (pRepoName) into repoArray
+   put github_ExtractHtmlUrl (repoArray) into githubURL
+   return githubURL
+end github_GetRepoUrl
+
+
+--> GitHub | Launch
+-
+command github_LaunchStack stackName, pRepoName
+   if exists (stack stackName) is false then return empty
+   --
+   put github_GetUrl (stackName, pRepoName) into githubURL
+   --
+   launch url githubURL
+   return githubURL
+end github_LaunchStack
+
+command github_LaunchTransport shortFile, pRepoName
+   put github_TransportURL (shortFile, pRepoName) into githubURL
+   launch url githubURL
+end github_LaunchTransport
+
+command go_GitHub projectName
+   gitHub_Go projectName
+   return the result
+end go_GitHub
+
+
+--> Github | Go
+-
+command gitHub_Go projectName
    if exists (stack projectName) then
       delete stack projectName
    end if
@@ -23,10 +152,14 @@ command go_GitHubProject projectName
    put github_ConstructProjectUrl (projectName) into rawURL
    go to stack url rawURL
    --
-   return the result
-end go_GitHubProject
+   if the result is empty then
+      return  rawURL
+   else
+      return "error," & the result
+   end if
+end gitHub_Go
 
-command go_GitHubModule moduleName, projectName
+command gitHub_GoModule moduleName, projectName
    if exists (stack moduleName) then
       delete stack moduleName
    end if
@@ -35,7 +168,7 @@ command go_GitHubModule moduleName, projectName
    go to stack url rawURL
    --
    return the result
-end go_GitHubModule
+end gitHub_GoModule
 
 function github_ConstructProjectUrl projectName
    -- https://github.com/LiveCodeWorld/lcw_Caddy/raw/master/lcw_Caddy.livecode
@@ -56,69 +189,6 @@ function github_ConstructModuleUrl moduleName, projectName
    put merge ("https://github.com/LiveCodeWorld/[[projectName]]/blob/master/modules/[[shortModuleFolder]]/[[shortFile]]?raw=true") into someURL
    return someURL
 end github_ConstructModuleUrl
-
-function github_ConstructLaunchUrl stackName
-   if exists (stack stackName) is false then return empty
-   
-   put the long id of stack stackName into tObject
-   --
-   put the filename of tObject into stackPath
-   put the project_Name of tObject into repoName
-   put the script_Type of tObject into scriptType
-   --
-   put github_GetLaunchUrl (repoName, stackPath, scriptType, stackName) into githubURL
-   return githubURL
-end github_ConstructLaunchUrl
-
-function github_GetLaunchUrl pRepoName, pPath, scriptType, stackName
-   if pRepoName is empty then
-      return "https://github.com/LiveCodeWorld"
-   end if
-   
-   put github_FetchRepoArray (pRepoName) into repoArray
-   put github_ExtractHtmlUrl (repoArray) into githubURL
-   if pPath is empty then
-      return githubURL & pPath
-   end if
-   
-   switch scriptType
-      case "transport"
-         -- https://github.com/LiveCodeWorld/lcw_Controllers
-         -- /blob/master/
-         -- controllers/ward.lc
-         put "/blob/master/controllers/" & stackName into relPath
-         break
-      default
-         -- https://github.com/LiveCodeWorld/lcw_Script
-         -- /blob/master/
-         -- libraries/lib_Help.livecodescript
-         put "/blob/master/" after githubURL
-         put _MakeStackPathRelative (pPath) into relPath
-   end switch
-   
-   put relPath after githubURL
-   --
-   return githubURL
-end github_GetLaunchUrl
-
-private function _MakeStackPathRelative pPath
-   if char 1 of pPath is not "/" then
-      -- assume it is already relative
-      return pPath
-   end if
-   
-   if exists (stack pPath) then
-      put the project_Folder of stack pPath into projectFolder
-      set the itemdelimiter to slash
-      put the number of items of projectFolder into firstItemNum
-      put pPath into relPath
-      delete item 1 to firstItemNum of relPath
-      return relPath
-   else
-      breakpoint
-      return pPath
-   end if
-end _MakeStackPathRelative
 
 
 --> Github | Orgs
@@ -196,49 +266,6 @@ function github_LivecodeWorldProjectExists projectName
    return someBoolean
 end github_LivecodeWorldProjectExists
 
-getprop github_HandlerURL [shortHkey]
-   put the long id of the target into hObject
-   put the hkey_Line [shortHkey] of hObject into hTableLine
-   if hTableLine is empty then return empty
-   --
-   put word 2 of hTableLine into hName
-   put word 3 of hTableLine + 1 into sLineNum
-   put word 4 of hTableLine + 1 into eLineNum
-   --
-   put github_GetHandlerURL (hObject, sLineNum, eLineNum) into githubURL 
-   return githubURL
-end github_HandlerURL
-
-
---> Github | Props
--
-getprop github_WikiPage
-   put the stack_Object of the target into stackObject
-   put github_CreateStackWikiPage (stackObject) into mdLines
-   return mdLines
-end github_WikiPage
-
-getprop github_RelativePath
-   put the stack_Object of the target into sObject
-   set the itemdelimiter to slash
-   put the number of items of the engine folder + 2 into sNum
-   get the filename of sObject
-   put item sNum  to -1 of it into relPath
-   return relPath
-end github_RelativePath
-
-getprop github_LaunchURL
-   put the long id of the target into tObject
-   --
-   put the stack_Name of tObject into stackName
-   put the script_Type of tObject into scriptType
-   put the project_Name of stack stackName into projectName
-   put the filename of stack stackName into stackPath
-   
-   put github_GetLaunchUrl (projectName, stackPath, scriptType, stackName) into githubURL
-   return githubURL
-end github_LaunchURL
-
 function github_GetHandlerURL sObject, pStartLineNum, pEndLineNum
    -- put "https://github.com/livecode/livecode-ide/blob/develop/" & relPath into githubURL
    -- https://github.com/LiveCodeWorld/lcw_Script/blob/master/libraries/lib_Help.livecodescript
@@ -266,20 +293,6 @@ function script_GetHandlerMarkdown tObject, relativePath
    delete char -1 of mdLines
    return mdLines
 end script_GetHandlerMarkdown
-
-
---> GitHub | Launch
--
-command github_LaunchStack stackName
-   put github_ConstructLaunchUrl (stackName) into githubURL
-   launch url githubURL
-   return githubURL
-end github_LaunchStack
-
-command github_Launch repoName, pPath
-   put github_GetLaunchUrl (repoName, pPath) into githubURL
-   launch url githubURL
-end github_Launch
 
 
 --> GitHub | Tokens

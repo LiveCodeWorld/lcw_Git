@@ -63,9 +63,13 @@ end disabled_DisplayProjectView
 
 --> Global | Github | Line | Menu
 -
-on menu_LaunchGithubProject repoProjectName
-   github_Launch repoProjectName
+on menu_LaunchGithubProject projectName
+   github_Launch projectName
 end menu_LaunchGithubProject
+
+on menu_GoGithub projectName
+   go_GitHub projectName
+end menu_GoGithub
 
 on _
 end _
@@ -139,3 +143,4 @@ on menu_DisplayGithubRepoArray repoProjectName
    --
    display_View repoArray, repoProjectName
 end menu_DisplayGithubRepoArray
+

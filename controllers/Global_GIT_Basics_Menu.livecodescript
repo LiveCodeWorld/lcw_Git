@@ -6,6 +6,26 @@ name: Global | GIT | Basics | Menu
 type: controller
 version: 0.3
 
+/*
+private function _CheckProjectName displayView
+   -- check LCW project
+   put the title_Text of displayView into projectName
+   if there is a stack projectName then
+      put projectName into LocalArray ["projectName"]
+      return projectName
+   else
+      put empty into LocalArray ["projectName"]
+      return empty
+   end if
+end _CheckProjectName
+
+private command _LoadGitDisplayView projectName
+   put display_FindView ("Git Status", projectName) into gitDisplayView
+   put gitDisplayView into LocalArray ["gitDisplayView"]
+   return gitDisplayView
+end _LoadGitDisplayView
+*/
+
 
 --> Where?
 -
@@ -26,30 +46,39 @@ end _IsGitStatusDisplay
 -
 local LocalArray
 
-on menu_Init tObject
-   put _CheckDisplayView (tObject) into displayView
-   if displayView is empty then return false
-   put _CheckProjectName (displayView) into projectName
-   if projectName is empty then return false
-   _LoadGitDisplayView projectName
+getprop menu_Target [tObject]
+   put the display_View of tObject into gitDisplayView
+   if gitDisplayView is empty then return tObject
+   put gitDisplayView into LocalArray ["gitDisplayView"]
+   --
+   put the title_Text of gitDisplayView into projectName
+   put projectName into LocalArray ["projectName"]
+   -- _LoadGitDisplayView projectName
    
-   put the git_Folder of stack projectName into gitFolder
-   put the git_IsActive of stack projectName into gitIsActive
-   
+   put env_ConstructProjectFolder (projectName) into projectFolder    
+   put git_GetActiveStatus (projectFolder) into gitIsActive
+   if gitIsActive is true then
+      put projectFolder into gitFolder
+   else
+      put empty into gitFolder
+   end if
    put gitFolder into LocalArray ["gitFolder"]
    put gitIsActive into LocalArray ["gitIsActive"]
    put _RemoteIsBad() into LocalArray ["_RemoteIsBad"]
    
-   -- slow ???
    put git_GetRemoteAddress (gitFolder) into remoteAddress
    put github_ListOrgRepos() into LocalArray ["lcwRepoNames"]
    put remoteAddress into LocalArray ["remoteAddress"]
    
    put _GetStatusArray() into statusArray
    put statusArray into LocalArray ["statusArray"]
-   
-   return true
-end menu_Init
+   --
+   return projectFolder
+end menu_Target
+
+getprop gitDocumentation_Params
+   return the hkey_CaseConditions ["M menu_GitDocumentation"] of me
+end gitDocumentation_Params
 
 getprop disabled_PushCurrentBranch
    put LocalArray ["statusArray"] into statusArray
@@ -134,9 +163,8 @@ on menu_SaveAndRefresh
    _RefreshGitStatus
 end menu_SaveAndRefresh
 
-on menu_Pull
+on menu_Pull gitFolder
    put LocalArray ["gitFolder"] into gitFolder
-   breakpoint
    
    -- TO PULL A new BRANCH FROM A REMOTE REPOSITORY
    -- put merge("git pull origin [[remoteBranch]]:[[newLocalBranch]]") into someShell
@@ -167,7 +195,7 @@ end menu_Pull
 on _
 end _
 
-on menu_AddAllUntracked
+on menu_AddAllUntracked gitFolder
    /*
    -- dig into this. "git add --update" does not seem to do anything useful.
    git_AddChanged
@@ -183,7 +211,7 @@ on menu_AddAllUntracked
    _RefreshGitStatus
 end menu_AddAllUntracked
 
-on menu_StageThenCommit gitFolder
+on menu_StageThenCommit projectFolder
    put LocalArray ["gitFolder"] into gitFolder
    --
    put lcw_Ask ("Comment on this change...") into someComment
@@ -194,7 +222,7 @@ end menu_StageThenCommit
 on _
 end _
 
-on menu_PushCurrentBranch gitFolder
+on menu_PushCurrentBranch projectFolder
    -- TO push THE new BRANCH TO A REMOTE REPOSITORY
    set the cursor to watch
    put LocalArray ["gitFolder"] into gitFolder
@@ -205,7 +233,14 @@ end menu_PushCurrentBranch
 on _
 end _
 
-on menu_GitDocumentation noIdea, menuChoice
+on menu_LaunchGithubProject projectFolder
+   put LocalArray ["projectName"] into projectName
+   --
+   put the github_LaunchURL of stack projectName into someURL
+   launch url someURL
+end menu_LaunchGithubProject
+
+on menu_GitDocumentation projectFolder, menuChoice
    switch menuChoice
       case "Crash course"
          launch url "http://git.or.cz/course/svn.html"
@@ -263,33 +298,6 @@ private command _RefreshGitStatus
    put LocalArray ["projectName"] into projectName
    display_GitRefreshProjectName projectName
 end _RefreshGitStatus
-
-private function _CheckDisplayView tObject
-   -- let's check we are working with an indexView
-   put the view_Object of tObject into displayView
-   if exists (displayView) is false then return empty
-   
-   put displayView into LocalArray ["displayView"]
-   return displayView
-end _CheckDisplayView
-
-private command _LoadGitDisplayView projectName
-   put display_FindView ("Git Status", projectName) into gitDisplayView
-   put gitDisplayView into LocalArray ["gitDisplayView"]
-   return gitDisplayView
-end _LoadGitDisplayView
-
-private function _CheckProjectName displayView
-   -- check LCW project
-   put the title_Text of displayView into projectName
-   if there is a stack projectName then
-      put projectName into LocalArray ["projectName"]
-      return projectName
-   else
-      put empty into LocalArray ["projectName"]
-      return empty
-   end if
-end _CheckProjectName
 
 private function _RemoteIsBad
    put LocalArray ["gitFolder"] into gitFolder

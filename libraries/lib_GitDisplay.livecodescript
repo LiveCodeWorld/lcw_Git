@@ -12,6 +12,9 @@ It has not been tested on unix (should work fine), or Windows machines (beware o
 */
 
 
+--> Working on
+-
+
 --> Events
 -
 on saveStackRequest
@@ -29,26 +32,6 @@ on saveStackRequest
    pass saveStackRequest -- or the stack won't be saved
 end saveStackRequest
 
-
---> Working on
--
-command display_GitProjectStatus projectName
-   put env_GetProjectFolder (projectName) into gitFolder
-   if gitFolder is empty then
-      display_DebugHistory "display_GitProjectStatus"
-      --
-      put merge ("Cannot find project '[[projectName]]'") into someQuestion
-      lcw_AnswerWarning someQuestion
-   end if
-   --
-   display_GitFolderStatus gitFolder
-   put the result into arrayView
-   return arrayView
-end display_GitProjectStatus
-
-
---> Git | Display | Events
--
 on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
    put the displayed_GitCheckoutFolder of arrayView into gitCheckoutFolder
    text_AddTrailing gitCheckoutFolder, slash
@@ -70,6 +53,87 @@ on mDoubleUp_DisplayGitFile arrayView, shortFileOrFolder
          break
    end switch
 end mDoubleUp_DisplayGitFile
+
+
+--> Props
+-
+getprop git_Tree
+   return _GitTreeView()
+end git_Tree
+
+getprop git_TreeField
+   put _GitTreeView() into gitTreeView
+   return the tree_Field of gitTreeView
+end git_TreeField
+
+getprop git_StatusMenuTitle
+   -- only used by "menu_Title" in the line_Menu of the dynamically created Git Status display_Array as set in arrayView script
+   -- utility for customising git array display
+   -- not needed to be in a library
+   -- but useful to study how to make flexible menus
+   
+   put the long id of the target into tObject
+   
+   put "Global | GIT |" into mTitle
+   put the hilited_Element of tObject into commaPath
+   put the selected_Value of tObject into sValue
+   if sValue is not an array then
+      -- delete item -1 of commaPath
+      put "File" into item -1 of commaPath
+   end if
+   repeat for each item someItem in commaPath
+      put toupper (char 1 of someItem) into char 1 of someItem
+      if char -1 of someItem = ":" then delete char -1 of someItem
+      put space & someItem && "|" after mTitle
+   end repeat
+   put space & "Menu" after mTitle
+   
+   -- put menu_GlobalControllerExists (mTitle) into someBoolean
+   put mArray_ActiveControllerExists (mTitle) into someBoolean
+   switch
+      case someBoolean
+         return mTitle
+      default
+         put the line_Menu of tObject into mTitle
+         return mTitle
+   end switch
+end git_StatusMenuTitle
+
+
+--> Display | GIST
+-
+command display_Gists pHow
+   set the cursor to watch
+   switch pHow
+      case "Gist Controllers"
+         put gist_FetchFiles ("controller") into gistList
+         break
+      case "Gist Scripts"
+         put gist_FetchFiles() into gistList
+         filter gistList with "script,*"
+         break
+         put gist_FetchFiles() into gistList
+      default
+   end switch
+   display_Index gistList, "gist_FetchFiles(),Gists", "Global | Gist | Menu", "Global | Gist | Line | Menu", "gistMouseUp", "gistMouseDoubleUp"
+end display_Gists
+
+
+--> Git | Display
+-
+command display_GitProjectStatus projectName, pRepoFolder
+   put env_ConstructProjectFolder (projectName, pRepoFolder) into gitFolder
+   if gitFolder is empty then
+      display_DebugHistory "display_GitProjectStatus"
+      --
+      put merge ("Cannot find project '[[projectName]]'") into someQuestion
+      lcw_AnswerWarning someQuestion
+   end if
+   --
+   display_GitFolderStatus gitFolder
+   put the result into arrayView
+   return arrayView
+end display_GitProjectStatus
 
 command display_GitPushCurrentBranch gitFolder
    put git_CurrentBranchName (gitFolder) into currentBranchName
@@ -113,15 +177,27 @@ command display_GitStatus sObject
    return arrayView
 end display_GitStatus
 
-command display_GitRefreshProjectName gitProjectName
-   put display_FindView ("Git Status", gitProjectName) into gitDisplayView
-   if exists (gitDisplayView) is false then
-      return empty
-   else
-      put the git_Folder of stack gitProjectName into gitCheckoutFolder
-      display_GitFolderStatus gitCheckoutFolder
-      return gitCheckoutFolder
-   end if
+command display_GitRefreshProjectName projectName
+   -- works even if project is not loaded based on standard file names
+   put env_ConstructHomePath (projectName) into homeStackPath
+   put display_FindView ("Git Status", projectName) into gitDisplayView
+   --
+   switch
+      case exists (gitDisplayView) is false
+         return "Error, there is no 'Git Staus' display for project '[[asdf]]'. Doing nothing."
+      case there is a stack projectName
+         put the git_Folder of stack projectName into gitCheckoutFolder
+         display_GitFolderStatus gitCheckoutFolder
+         put the result into displayView
+         return displayView
+      case there is a stack homeStackPath
+         put git_GetCheckoutFolder (homeStackPath) into gitCheckoutFolder
+         display_GitFolderStatus gitCheckoutFolder
+         put the result into displayView
+         return displayView
+      default
+         return "Error, project '[[projectName]]' does not exist."
+   end switch
 end display_GitRefreshProjectName
 
 command display_GitProjectStatus projectName
@@ -148,6 +224,122 @@ command display_GitFolderStatus gitCheckoutFolder
    return arrayView
 end display_GitFolderStatus
 
+
+--> Display
+-
+command display_GitHkeyLog hKey, pDoubleUpThing, pStackLabel
+   put hkey_HandlerFile (hKey) into handlerFile
+   
+   hkey_Deconstruct hKey, hName, hType, hObject, hNum
+   put "History for" && kwote(handler_ConvertType (hType) && hName) into someTitle
+   
+   put handlerFile into gitRelativeFile
+   git_SetRelativePath gitRelativeFile
+   
+   -- temp set gitRoot
+   put git_GetRootFolder() into oRoot
+   put git_GetCheckoutFolder (handlerFile) into tempRootFolder
+   git_SetRootFolder tempRootFolder
+   
+   if pStackLabel is empty then put "Hkey Log" into pStackLabel
+   put hKey into someTitle
+   display_GitFileHistory gitRelativeFile, someTitle, pDoubleUpThing, pStackLabel
+   
+   put the result into treeView
+   put the tree_Field of treeView into treeField
+   
+   lock messages
+   set the displayed_Hkey of treeField to hKey
+   set the displayed_Object of treeField to hObject
+   set the displayed_File of treeField to handlerFile
+   unlock messages
+   
+   -- reset git root
+   git_SetRootFolder oRoot
+   return treeView
+end display_GitHkeyLog
+
+command display_GitScriptLog someObject, pDoubleUpThing, pStackLabel
+   put the script_File of someObject into someFile
+   
+   -- temp set gitRoot
+   -- should maybe do this built in with all git file related handlers?
+   put git_GetRootFolder() into oRoot
+   put git_GetCheckoutFolder (someFile) into tempRootFolder
+   git_SetRootFolder tempRootFolder
+   
+   if pStackLabel is empty then put "Script Log" into pStackLabel
+   put the mobile_Name of someObject into someTitle
+   
+   git_SetRelativePath someFile
+   display_GitFileHistory someFile, someTitle, pDoubleUpThing, pStackLabel
+   put the result into treeView
+   
+   put the tree_Field of treeView into treeField
+   set the displayed_Object of treeField to someObject
+   
+   -- reset git root
+   git_SetRootFolder oRoot
+   return tempRootFolder
+end display_GitScriptLog
+
+command display_GitFileHistory someFile, pTitle, pDoubleUpThing, pStackLabel
+   put git_FileLogOutline (someFile) into someOutline
+   display_LogOutline someOutline, someFile, pTitle, pDoubleUpThing, pStackLabel
+   return the result
+end display_GitFileHistory
+
+command display_LogOutline someOutline, someFile, pTitle, pDoubleUpThing, pStackLabel
+   put empty into pExpandLevel
+   put false into pKeepHidden
+   put "palette" into pStackStyle
+   display_Outline someOutline, pTitle, "Global | Git | Log | Menu", "Global | Git | Line | Log | Menu", pExpandLevel, pKeepHidden, pStackStyle, pStackLabel
+   
+   put the result into treeView
+   put the tree_Field of treeView into treeField
+   
+   set the displayed_File of treeField to someFile
+   if exists (pDoubleUpThing) then 
+      set the trigger_Object ["tree_MouseDoubleUp"] of treeField to pDoubleUpThing
+   else if pDoubleUpThing is not empty then
+      -- assume it is a trigger_Name
+      set the trigger_Name ["mouseDoubleUp"] of treeField to pDoubleUpThing
+   end if 
+   return treeView
+end display_LogOutline
+
+
+--> Display | GIT | Stack
+-
+command display_StackHistory someObject
+   local logLinkArray
+   
+   put the stack_Object of someObject into stackObject
+   put the filename of stackObject into stackPath
+   put the git_Folder of someObject into gitCheckoutFolder
+   
+   put git_GetFileLog (stackPath) into simpleLog
+   git_ProcessSimpleLogLines simpleLog, logArray, orderedCommentLines
+   
+   put "Stack Log for:" && the name of stackObject into someTitle
+   put comma & "GIT" after someTitle
+   put empty into pExpandLevel
+   
+   -- display_Array logArray, someTitle, "Global | Git | Stack | History | Menu", "Global | Git | Line | Stack | Log | Menu"
+   display_Index orderedCommentLines, someTitle, "Global | Git | Stack | History | Menu", "Global | Git | Line | Stack | Log | Menu"
+   put the result into indexView
+   
+   set the log_Array of indexView to logArray
+   set the displayed_Object of indexView to stackObject
+   set the displayed_File of indexView to stackPath
+   set the displayed_GitCheckoutFolder of indexView to gitCheckoutFolder
+   
+   return treeView
+end display_StackHistory
+
+
+--> Git | Display | Old
+-
 command git_DisplayStatusLines gitCheckoutFolder
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
    set the itemdelimiter to slash
@@ -157,9 +349,6 @@ command git_DisplayStatusLines gitCheckoutFolder
    return the result
 end git_DisplayStatusLines
 
-
---> Git | Display | Old
--
 command git_RefreshDisplay pTreeTitle
    -- this is now handled locally in each display
    -- look at this to dig out older code for files and log.
@@ -193,142 +382,6 @@ command git_RefreshDisplay pTreeTitle
    end switch
    return someOutline
 end git_RefreshDisplay
-
-
---> Display| Git | Dynamic Line Menus
--
-getprop git_StatusMenuTitle
-   -- only used by "menu_Title" in the line_Menu of the dynamically created Git Status display_Array as set in arrayView script
-   -- utility for customising git array display
-   -- not needed to be in a library
-   -- but useful to study how to make flexible menus
-   
-   put the long id of the target into tObject
-   
-   put "Global | GIT |" into mTitle
-   put the hilited_Element of tObject into commaPath
-   put the selected_Value of tObject into sValue
-   if sValue is not an array then
-      -- delete item -1 of commaPath
-      put "File" into item -1 of commaPath
-   end if
-   repeat for each item someItem in commaPath
-      put toupper (char 1 of someItem) into char 1 of someItem
-      if char -1 of someItem = ":" then delete char -1 of someItem
-      put space & someItem && "|" after mTitle
-   end repeat
-   put space & "Menu" after mTitle
-   
-   -- put menu_GlobalControllerExists (mTitle) into someBoolean
-   put mArray_ActiveControllerExists (mTitle) into someBoolean
-   switch
-      case someBoolean
-         return mTitle
-      default
-         put the line_Menu of tObject into mTitle
-         return mTitle
-   end switch
-end git_StatusMenuTitle
-
-command _DisplayGitStatusTable gitStatusTable, gitCheckoutFolder  
-   -- put git_GetCheckoutFolder (gitCheckoutFolder) into gitCheckoutFolder -- can be called from anywhere inside a git repo 
-   
-   set the itemdelimiter to ":"
-   if item 1 of gitStatusTable = "fatal" then
-      -- fatal: Not a git repository (or any of the parent directories): .git
-      answer warning gitStatusTable
-      return empty
-   end if
-   
-   -- let's find an existing displayView if it exists
-   set the itemdelimiter to slash
-   put item -1 of gitCheckoutFolder into gitShortFolder
-   put display_FindView ("Git Status", gitShortFolder) into displayView
-   set the itemdelimiter to comma
-   
-   -- see "git_GetStatusArray (gitCheckoutFolder)"
-   put git_ConstructStatusArray (gitStatusTable) into statusArray
-   array_StripEmptyKeys statusArray
-   
-   if exists (displayView) then
-      set the displayed_Array of displayView to statusArray
-   else
-      put gitShortFolder && ",GIT Status" into someTitle
-      
-      put "mDoubleUp_DisplayGitFile" into mDoubleUpCommand
-      
-      display_Array statusArray, someTitle, "Global | GIT | Status | Menu", "Global | GIT | Line | File | Menu", empty, mDoubleUpCommand
-      put the result into displayView
-      --
-      set the displayed_GitCheckoutFolder of displayView to gitCheckoutFolder
-      
-      -- experimental here we set the script of the displayView's card
-      put the script of displayView into oScript
-      put _DisplayGitStatusScript() into someScript
-      put oScript & CR & CR & someScript into newScript
-      set the script of displayView to newScript
-   end if
-   return displayView
-end _DisplayGitStatusTable
-
-function _DisplayGitStatusScript
-   put "getprop menu_Title" into someScript
-   put CR & "    if the kind of the target = 'com.livecode.widget.treeView' then return the git_StatusMenuTitle of the target" after someScript
-   put CR & "    pass menu_Title" after someScript
-   put CR & "end menu_Title" after someScript
-   
-   -- for some reason  = 'com.livecode.widget.treeView'  does not work
-   replace "'" with quote in someScript
-   return someScript
-end _DisplayGitStatusScript
-
-
---> Display | GIST
--
-command display_Gists pHow
-   set the cursor to watch
-   switch pHow
-      case "Gist Controllers"
-         put gist_FetchFiles ("controller") into gistList
-         break
-      case "Gist Scripts"
-         put gist_FetchFiles() into gistList
-         filter gistList with "script,*"
-         break
-         put gist_FetchFiles() into gistList
-      default
-   end switch
-   display_Index gistList, "gist_FetchFiles(),Gists", "Global | Gist | Menu", "Global | Gist | Line | Menu", "gistMouseUp", "gistMouseDoubleUp"
-end display_Gists
-
-
---> Display | GIT | Stack
--
-command display_StackHistory someObject
-   local logLinkArray
-   
-   put the stack_Object of someObject into stackObject
-   put the filename of stackObject into stackPath
-   put the git_Folder of someObject into gitCheckoutFolder
-   
-   put git_GetFileLog (stackPath) into simpleLog
-   git_ProcessSimpleLogLines simpleLog, logArray, orderedCommentLines
-   
-   put "Stack Log for:" && the name of stackObject into someTitle
-   put comma & "GIT" after someTitle
-   put empty into pExpandLevel
-   
-   -- display_Array logArray, someTitle, "Global | Git | Stack | History | Menu", "Global | Git | Line | Stack | Log | Menu"
-   display_Index orderedCommentLines, someTitle, "Global | Git | Stack | History | Menu", "Global | Git | Line | Stack | Log | Menu"
-   put the result into indexView
-   
-   set the log_Array of indexView to logArray
-   set the displayed_Object of indexView to stackObject
-   set the displayed_File of indexView to stackPath
-   set the displayed_GitCheckoutFolder of indexView to gitCheckoutFolder
-   
-   return treeView
-end display_StackHistory
 
 
 --> Git | Display | Stack
@@ -517,102 +570,63 @@ function git_LogLinkOutline simpleLog
 end git_LogLinkOutline
 
 
---> Objects
+--> Private
 -
 private function _GitTreeView
    put the module_View of stack "View|Tree|GIT" into gitTreeView
    return gitTreeView
 end _GitTreeView
 
-getprop git_Tree
-   return _GitTreeView()
-end git_Tree
+command _DisplayGitStatusTable gitStatusTable, gitCheckoutFolder  
+   -- put git_GetCheckoutFolder (gitCheckoutFolder) into gitCheckoutFolder -- can be called from anywhere inside a git repo 
+   
+   set the itemdelimiter to ":"
+   if item 1 of gitStatusTable = "fatal" then
+      -- fatal: Not a git repository (or any of the parent directories): .git
+      answer warning gitStatusTable
+      return empty
+   end if
+   
+   -- let's find an existing displayView if it exists
+   set the itemdelimiter to slash
+   put item -1 of gitCheckoutFolder into gitShortFolder
+   put display_FindView ("Git Status", gitShortFolder) into displayView
+   set the itemdelimiter to comma
+   
+   -- see "git_GetStatusArray (gitCheckoutFolder)"
+   put git_ConstructStatusArray (gitStatusTable) into statusArray
+   array_StripEmptyKeys statusArray
+   
+   if exists (displayView) then
+      set the displayed_Array of displayView to statusArray
+   else
+      put gitShortFolder && ",GIT Status" into someTitle
+      
+      put "mDoubleUp_DisplayGitFile" into mDoubleUpCommand
+      
+      display_Array statusArray, someTitle, "Global | GIT | Status | Menu", "Global | GIT | Line | File | Menu", empty, mDoubleUpCommand
+      put the result into displayView
+      --
+      set the displayed_GitCheckoutFolder of displayView to gitCheckoutFolder
+      
+      -- experimental here we set the script of the displayView's card
+      put the script of displayView into oScript
+      put _DisplayGitStatusScript() into someScript
+      put oScript & CR & CR & someScript into newScript
+      set the script of displayView to newScript
+   end if
+   return displayView
+end _DisplayGitStatusTable
 
-getprop git_TreeField
-   put _GitTreeView() into gitTreeView
-   return the tree_Field of gitTreeView
-end git_TreeField
+function _DisplayGitStatusScript
+   put "getprop menu_Title" into someScript
+   put CR & "    if the kind of the target = 'com.livecode.widget.treeView' then return the git_StatusMenuTitle of the target" after someScript
+   put CR & "    pass menu_Title" after someScript
+   put CR & "end menu_Title" after someScript
+   
+   -- for some reason  = 'com.livecode.widget.treeView'  does not work
+   replace "'" with quote in someScript
+   return someScript
+end _DisplayGitStatusScript
 
 
---> Display
--
-command display_GitHkeyLog hKey, pDoubleUpThing, pStackLabel
-   put hkey_HandlerFile (hKey) into handlerFile
-   
-   hkey_Deconstruct hKey, hName, hType, hObject, hNum
-   put "History for" && kwote(handler_ConvertType (hType) && hName) into someTitle
-   
-   put handlerFile into gitRelativeFile
-   git_SetRelativePath gitRelativeFile
-   
-   -- temp set gitRoot
-   put git_GetRootFolder() into oRoot
-   put git_GetCheckoutFolder (handlerFile) into tempRootFolder
-   git_SetRootFolder tempRootFolder
-   
-   if pStackLabel is empty then put "Hkey Log" into pStackLabel
-   put hKey into someTitle
-   display_GitFileHistory gitRelativeFile, someTitle, pDoubleUpThing, pStackLabel
-   
-   put the result into treeView
-   put the tree_Field of treeView into treeField
-   
-   lock messages
-   set the displayed_Hkey of treeField to hKey
-   set the displayed_Object of treeField to hObject
-   set the displayed_File of treeField to handlerFile
-   unlock messages
-   
-   -- reset git root
-   git_SetRootFolder oRoot
-   return treeView
-end display_GitHkeyLog
-
-command display_GitScriptLog someObject, pDoubleUpThing, pStackLabel
-   put the script_File of someObject into someFile
-   
-   -- temp set gitRoot
-   -- should maybe do this built in with all git file related handlers?
-   put git_GetRootFolder() into oRoot
-   put git_GetCheckoutFolder (someFile) into tempRootFolder
-   git_SetRootFolder tempRootFolder
-   
-   if pStackLabel is empty then put "Script Log" into pStackLabel
-   put the mobile_Name of someObject into someTitle
-   
-   git_SetRelativePath someFile
-   display_GitFileHistory someFile, someTitle, pDoubleUpThing, pStackLabel
-   put the result into treeView
-   
-   put the tree_Field of treeView into treeField
-   set the displayed_Object of treeField to someObject
-   
-   -- reset git root
-   git_SetRootFolder oRoot
-   return tempRootFolder
-end display_GitScriptLog
-
-command display_GitFileHistory someFile, pTitle, pDoubleUpThing, pStackLabel
-   put git_FileLogOutline (someFile) into someOutline
-   display_LogOutline someOutline, someFile, pTitle, pDoubleUpThing, pStackLabel
-   return the result
-end display_GitFileHistory
-
-command display_LogOutline someOutline, someFile, pTitle, pDoubleUpThing, pStackLabel
-   put empty into pExpandLevel
-   put false into pKeepHidden
-   put "palette" into pStackStyle
-   display_Outline someOutline, pTitle, "Global | Git | Log | Menu", "Global | Git | Line | Log | Menu", pExpandLevel, pKeepHidden, pStackStyle, pStackLabel
-   
-   put the result into treeView
-   put the tree_Field of treeView into treeField
-   
-   set the displayed_File of treeField to someFile
-   if exists (pDoubleUpThing) then 
-      set the trigger_Object ["tree_MouseDoubleUp"] of treeField to pDoubleUpThing
-   else if pDoubleUpThing is not empty then
-      -- assume it is a trigger_Name
-      set the trigger_Name ["mouseDoubleUp"] of treeField to pDoubleUpThing
-   end if 
-   return treeView
-end display_LogOutline

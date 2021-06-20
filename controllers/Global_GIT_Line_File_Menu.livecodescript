@@ -14,7 +14,7 @@ local LocalArray
 
 --> Menu | Props
 -
-on menu_Init tObject
+getprop menu_Target [tObject]
    get the hilited_Element of tObject
    put item 1 of it into LocalArray ["topKey"]
    
@@ -23,7 +23,9 @@ on menu_Init tObject
    put the displayed_ScriptObject of displayView into LocalArray ["scriptObject"]
    put the displayed_GitCheckoutFolder of displayView into LocalArray ["gitCheckoutFolder"]
    put the displayed_Array of displayView into LocalArray ["displayedArray"]
-end menu_Init
+   --
+   return displayView
+end menu_Target
 
 getprop disabled_Branch [arrayView]
    if LocalArray ["topKey"] = "Branch" then
@@ -125,31 +127,15 @@ getprop disabled_EditFile [arrayView]
    end switch
 end disabled_EditFile
 
--- getprop disabled_EditScript [arrayView]
-put _getFile (arrayView) into someFile
-if exists (stack someFile) then
-   return false
-else
-   return true
-end if
-end disabled_EditScript
-
--- getprop disabled_RevertToLastCommit [arrayView]
-put the hilited_Element of arrayView into pathItems
-if LocalArray ["topKey"] = "Branch" or the number of items of pathItems < 3 then
-   return "delete"
-else
-   return false
-end if
-end disabled_RevertToLastCommit
-
--- getprop disabled_ResetToLastCommit
-if LocalArray ["topKey"] = "Branch" then
-   return "delete"
-else
-   return false
-end if
-end disabled_ResetToLastCommit
+private function _GetFile displayView
+   -- Untracked files:,files,controllers/Global_GIT_Menu.livecodescript,
+   put the hilited_Element of displayView into pathItems
+   get item 3 to -1 of pathItems
+   put word 1 of it into relativePath
+   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder  
+   put gitCheckoutFolder & relativePath into someFile
+   return someFile
+end _GetFile
 
 
 --> Global | GIT | Line | File | Menu
@@ -175,19 +161,11 @@ end menu_StageThenCommit
 on _
 end _
 
-on menu_AddUntrackedFile arrayView
-   -- Untracked files:,files,controllers/Global_GIT_Menu.livecodescript,
-   put the hilited_Element of arrayView into pathItems
-   get item 3 to -1 of pathItems
-   put word 1 of it into relativePath
-   
-   breakpoint
-   put LocalArray ["gitCheckoutFolder"] into gitCheckoutFolder
-   --  git_AddChanged relativePath, gitCheckoutFolder
-   
-   put gitCheckoutFolder & relativePath into someFileOrFolder
-   git_AddFolder someFileOrFolder -- this will work "cd to folder" then issue "git add ."
-   
+on menu_AddUntrackedFile displayView
+   put _GetFile (displayView) into someFile
+   --
+   git_AddFile someFile 
+   -- 
    _RefreshGitFolderStatus
 end menu_AddUntrackedFile
 

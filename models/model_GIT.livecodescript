@@ -4,20 +4,14 @@
 license: GPLv3
 name: model_GIT
 type: model
-version: 0.1
+version: 0.2
+
+/*
+*/
 
 
---> Working on | Igonre
+--> Working on
 -
-getprop git_IgnoreFile
-   -- a project .gitingore file
-   put the long id of the target into tObject
-   
-   put the project_Folder of tObject into projectFolder
-   put projectFolder & ".gitignore" into ignoreFile
-   return ignoreFile 
-end git_IgnoreFile
-
 getprop git_Project
    put the git_Folder of the target into gitRootFolder
    put git_GetProjectArray() into gitProjectArray
@@ -25,15 +19,153 @@ getprop git_Project
    return projectName
 end git_Project
 
-function git_LocalIgnoreFile
-   put git_GetRootFolder() & ".gitignore" into ignoreFile
-   return ignoreFile
+getprop git_Folder
+   put the mainstack_File of the target into somePath
+   try
+      -- if git is installed
+      put git_GetCheckoutFolder (somePath) into repoRootFolder
+   catch e
+      put git_FindCheckoutFolder (somePath) into repoRootFolder
+   end try
+   return repoRootFolder
+end git_Folder
+
+function git_FindCheckoutFolder somePath
+   -- slightly faster then "git_GetCheckoutFolder" (2 ticks)
+   put git_FindDotGitFolder (somePath) into checkoutFolder
+   set the itemdelimiter to slash
+   delete item -1 of checkoutFolder
+   return checkoutFolder
+end git_FindCheckoutFolder
+
+function git_GetCheckoutFolder pFolderOrFile
+   -- see also "git_WithinCheckoutFolder"
+   put the defaultFolder into oFolder
+   if pFolderOrFile is empty then
+      put the defaultFolder into pFolderOrFile
+   else
+      if there is a file pFolderOrFile then
+         set the itemdelimiter to "/"
+         delete item -1 of pFolderOrFile
+      end if
+      set the defaultFolder to pFolderOrFile
+   end if
+   
+   put git_Version() into someVersion
+   if someVersion begins with "1.7." then
+      put "git rev-parse --show-toplevel" into someShell
+      put git_PathToCommandLine() into gitPath
+      shell_BashParamEscape gitPath
+      put gitPath before someShell
+      put shell (someShell) into shellResult
+      
+      set the itemdelimiter to ":"
+      if item 1 of shellResult = "fatal" then
+         set the defaultFolder to oFolder
+         return empty
+      end if
+      
+      put word 1 to -1 of shellResult & "/" into gitRootFolder
+   else
+      put "git rev-parse --show-cdup" into someShell
+      put git_PathToCommandLine() into gitPath
+      shell_BashParamEscape gitPath
+      put gitPath before someShell
+      put shell (someShell) into shellResult
+      
+      set the itemdelimiter to ":"
+      if item 1 of shellResult = "fatal" then
+         set the defaultFolder to oFolder
+         return empty
+      end if
+      
+      put word 1 to -1 of shellResult into someChars
+      put the number of chars of someChars/3 into upCount
+      
+      set the itemdelimiter to "/"
+      put -1 - upCount into minusItem
+      put (item 1 to minusItem of pFolderOrFile) into gitRootFolder
+      put "/" after gitRootFolder
+   end if
+   
+   -- put git_FindDotGitFolder (someFile) into gitRootFolder -- an older verison could use
+   
+   set the defaultFolder to oFolder
+   return gitRootFolder
+end git_GetCheckoutFolder
+
+
+--> Git | Ignore
+-
+getprop git_IgnoreFile
+   -- a project .gitingore file
+   put the project_Folder of the target into projectFolder
+   put git_LocalIgnoreFile (projectFolder) into localIgnoreFile
+   return localIgnoreFile 
+end git_IgnoreFile
+
+function git_LocalIgnoreFile projectFolder
+   text_AddTrailing projectFolder, slash
+   put projectFolder & ".gitignore" into localIgnoreFile
+   return localIgnoreFile
 end git_LocalIgnoreFile
 
 function git_GlobalIgnoreFile
    put $HOME & "/.gitignore" into ignoreFile
    return ignoreFile
 end git_GlobalIgnoreFile
+
+command git_CreateLocalIgnoreFile projectFolder, pIgnoreType
+   put git_LocalIgnoreFile (projectFolder) into ignoreFile
+   --
+   git_CreateIgnoreFile ignoreFile, pIgnoreType
+   --
+   put the result into shellResult
+   return shellResult
+end git_CreateLocalIgnoreFile
+
+command git_CreateGlobalIgnoreFile pIgnoreType
+   put git_GlobalIgnoreFile() into ignoreFile
+   --
+   git_CreateIgnoreFile ignoreFile, pIgnoreType
+   --
+   put the result into shellResult
+   return shellResult
+end git_CreateGlobalIgnoreFile
+
+command git_CreateIgnoreFile ignoreFile, pIgnoreType
+   -- very old (might be wrong or no longer relevant)
+   put "binfile:" & ignoreFile into someUrl
+   put ignoreText into url someUrl
+   --
+   put ignoreFile into bashFile
+   shell_BashParamEscape bashFile
+   if pIsGlobal is true then
+      put "git config --global core.excludesfile" && bashFile into someShell
+   else
+      put "touch" & bashFile into someShell
+   end if
+   git_ExecuteShell someShell
+   return the result
+end git_CreateIgnoreFile
+
+function git_ConstructIgnoreText pIgnoreType
+   switch pIgnoreType
+      case "LF"
+         put "*.gitignore" & LF after ignoreText
+         -- put "*.DS_Store" & LF after ignoreText
+         -- put "*.svn/*" & LF after ignoreText
+         --put "opn_Plugins/opn_Third/*" & lineEnding after ignoreText
+         return ignoreText
+      default -- case "CR"
+         put "*.gitignore" & LF after ignoreText
+         put "*.DS_Store" & CR after ignoreText
+         put ".svn*" & CR after ignoreText
+         put "*.gitignore" & CR after ignoreText
+         -- put "opn_Plugins/opn_Third/*" & lineEnding after ignoreText
+         return ignoreText
+   end switch
+end git_ConstructIgnoreText
 
 
 --> Props
@@ -47,17 +179,6 @@ getprop git_ShortFolder
    put item -1 of gitFolder into gitShortFolder
    return gitShortFolder
 end git_ShortFolder
-
-getprop git_Folder
-   put the mainstack_File of the target  into objectFile
-   try
-      -- if git is installed
-      put git_GetCheckoutFolder (objectFile) into repoRootFolder
-   catch e
-      put git_FindDotGitFolder (someFile) into checkoutFolder -- slightly faster (2 ticks)
-   end try
-   return repoRootFolder
-end git_Folder
 
 getprop git_IsActive
    put the effective filename of the stack_Object of the target into someFile
@@ -155,65 +276,6 @@ command git_InitFolder gitRootFolder, pDontAdd
    set the defaultfolder to oDefault
    return gitRootFolder
 end git_InitFolder
-
-
---> Git | Model | Folder
--
-function git_GetCheckoutFolder pFolderOrFile
-   -- see also "git_WithinCheckoutFolder"
-   put the defaultFolder into oFolder
-   if pFolderOrFile is empty then
-      put the defaultFolder into pFolderOrFile
-   else
-      if there is a file pFolderOrFile then
-         set the itemdelimiter to "/"
-         delete item -1 of pFolderOrFile
-      end if
-      set the defaultFolder to pFolderOrFile
-   end if
-   
-   put git_Version() into someVersion
-   if someVersion begins with "1.7." then
-      put "git rev-parse --show-toplevel" into someShell
-      put git_PathToCommandLine() into gitPath
-      shell_BashParamEscape gitPath
-      put gitPath before someShell
-      put shell (someShell) into shellResult
-      
-      set the itemdelimiter to ":"
-      if item 1 of shellResult = "fatal" then
-         set the defaultFolder to oFolder
-         return empty
-      end if
-      
-      put word 1 to -1 of shellResult & "/" into gitRootFolder
-   else
-      put "git rev-parse --show-cdup" into someShell
-      put git_PathToCommandLine() into gitPath
-      shell_BashParamEscape gitPath
-      put gitPath before someShell
-      put shell (someShell) into shellResult
-      
-      set the itemdelimiter to ":"
-      if item 1 of shellResult = "fatal" then
-         set the defaultFolder to oFolder
-         return empty
-      end if
-      
-      put word 1 to -1 of shellResult into someChars
-      put the number of chars of someChars/3 into upCount
-      
-      set the itemdelimiter to "/"
-      put -1 - upCount into minusItem
-      put (item 1 to minusItem of pFolderOrFile) into gitRootFolder
-      put "/" after gitRootFolder
-   end if
-   
-   -- put git_FindDotGitFolder (someFile) into gitRootFolder -- an older verison could use
-   
-   set the defaultFolder to oFolder
-   return gitRootFolder
-end git_GetCheckoutFolder
 
 
 --> Git | Model
