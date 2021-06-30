@@ -217,7 +217,6 @@ end display_GitProjectStatus
 command display_GitFolderStatus gitCheckoutFolder
    if there is not a folder gitCheckoutFolder then return empty
    put git_FetchStatusTable (gitCheckoutFolder) into gitStatusTable
-   -- see "git_GetStatusArray (gitCheckoutFolder)"
    --
    _DisplayGitStatusTable gitStatusTable, gitCheckoutFolder
    put the result into arrayView
@@ -600,12 +599,11 @@ command _DisplayGitStatusTable gitStatusTable, gitCheckoutFolder
    if exists (displayView) then
       set the displayed_Array of displayView to statusArray
    else
-      put gitShortFolder && ",GIT Status" into someTitle
-      
-      put "mDoubleUp_DisplayGitFile" into mDoubleUpCommand
-      
-      display_Array statusArray, someTitle, "Global | GIT | Status | Menu", "Global | GIT | Line | File | Menu", empty, mDoubleUpCommand
+      display_Array statusArray, gitShortFolder, "GIT Status"
       put the result into displayView
+      set the title_Menu of displayView to "Global | GIT | Status | Menu"
+      set the line_Menu of displayView to "Global | GIT | Line | File | Menu"
+      set the mouse_DoubleUp ["me"] of displayView to "mDoubleUp_DisplayGitFile"
       --
       set the displayed_GitCheckoutFolder of displayView to gitCheckoutFolder
       

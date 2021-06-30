@@ -966,702 +966,693 @@ function git_ConstructFileRevision objectFile, pGitHash, pBeforeTipNum
    end if
 end git_ConstructFileRevision
 
-command git_SparseCheckOut
+
+--> Git | Props
+-
+getprop script_CommitComment
+   put the long id of the target into scriptObject
+   put autoCommitComment (scriptObject) into commitComment
+   return commitComment
+end script_CommitComment
+
+getprop git_FileIsTracked
+   -- not sure the fastest way to do this
+   -- timer_Start "git_FileIsTracked"
+   put the git_Folder of the target into checkoutFolder
+   -- put git_GetFileLog (someFile) is empty into someBoolean -- takes about a second
+   -- timer_Stop "git_FileIsTracked"
+   return someBoolean
+end git_FileIsTracked
+
+setprop git_FileIsTracked someBoolean
+   put the script_File of the target into someFile
+   if someBoolean is true then
+      git_AddFile someFile
+   else
+      -- can't undo it?
+   end if
+end git_FileIsTracked
+
+getprop stack_IsLoaded
+   put the stack_Object of the target into stackObject
+   put stack_GetIsLoaded (stackObject) into someBoolean
+   return someBoolean
+end stack_IsLoaded
+
+getprop stack_IsUsed
+   put the stack_Name of the target into stackName
+   put stack_GetIsUsed (stackName) into someBoolean
+   return someBoolean
+end stack_IsUsed
+
+getprop git_MetaDataArray
+   put the git_CommitHash of the target into commitHash
+   put git_BlobHashInfo (commitHash) into logText
+   put git_ExtractLogMetadataArray (logText) into metadataArray
+   return metadataArray
+end git_MetaDataArray
+
+getprop git_LastLog
+   put the long id of the target into someObject
+   get git_GetRevisionHistory (empty, someObject)
+   return it
+end git_LastLog
+
+getprop git_StackHashLog [commitHash]
+   put the git_RelativeFile of the target into relativeFile
+   put git_StackHashLog (relativeFile, commitHash) into gitLog
+   return gitLog
+end git_StackHashLog
+
+getprop git_CommitHash [pBackNum]
+   put the git_RelativeFile of the target into relativePath
+   put git_GetCommitFileHash (relativePath, pBackNum) into commitHash
+   return commitHash
+end git_CommitHash
+
+getprop git_ScriptHash [pBackNum]
+   -- will often be commited at the same time as the stack
+   -- so often eqauls git_CommitHash
+   
+   put the script_RelativeFile of the target into relativePath
+   put git_GetCommitFileHash (relativePath, pBackNum) into commitHash
+   return commitHash
+end git_ScriptHash
+
+getprop git_ScriptFileLog
+   put the script_File of the target into someFile
+   put git_GetFileLog (someFile) into someLog
+   return someLog
+end git_ScriptFileLog
+
+getprop git_GetFileLog
+   put the stack_Name of the target into stackName
+   put the effective filename of stack stackName into someFile
+   put git_GetFileLog (someFile) into someLog
+   return someLog
+end git_GetFileLog
+
+getprop git_BlobHash [commitHash]
+   put the git_StackTreeish [commitHash] of the target into stackTreeish
+   put git_BlobHashFromTreeish (stackTreeish) into blobHash
+   return blobHash
+end git_BlobHash
+
+getprop git_StackTreeish [commitHash]
+   put the git_RelativeFile of the target into relativePath
+   if commitHash is empty then
+      return relativePath
+   else
+      return commitHash & ":" & relativePath
+   end if
+end git_StackTreeish
+
+getprop git_RevisionStack [gitHashOrNum]
+   put the stack_Object of the target into stackObject
+   put the filename of stackObject into someFile
+   if someFile is empty then return empty
+   
+   put git_GetRootFolder() into baseFolder
+   file_SetRelativePath someFile, baseFolder
+   put git_GetLastRevision (someFile, gitHashOrNum) into binaryStackData
+   return binaryStackData
+end git_RevisionStack
+
+
+--> Git
+-
+command git_Pull
+   -- TO PULL A new BRANCH FROM A REMOTE REPOSITORY
+   -- put merge("git pull origin [[remoteBranch]]:[[newLocalBranch]]") into someShell
+   -- put "git pull" into someShell
+   -- put "git pull origin master" into someShell
+   put git_CurrentBranchName() into currentBranchName
+   put "git pull origin" && kwote (currentBranchName) into someShell
+   
+   put git_ExecuteShellCommand (someShell) into shellResult
+   display_Lines shellResult, someShell
+   put the result into displayView
+   set the menu_Title of displayView to "Global | Git | Pull | Menu"
+end git_Pull
+
+command git_CommitScriptFile scriptObject
+   put the script of scriptObject into someScript
+   put autoCommitComment (scriptObject) into pCommitComment
+   if the optionkey is "Down" then
+      put lcw_Ask ("Describe your changes...", pCommitComment, false) into pCommitComment
+   end if
+   file_CreateBinary someScript, scriptFile
+   return scriptFile
+end git_CommitScriptfile
+
+command git_RestoreFile relativePath
    /*
-   is there a way to clone/pull only one directory from remote?
-   not really possible
-   after you fetch all of the history, then with some effort you can checkout only one directory look for sparse checkout if the latter interests you
-      */
-   end git_SparseCheckOut
+   $ git checkout HEAD^ path/to/file
+   replaces path/to/file by the contents it had in the commit HEAD^, 
+   and also updates the index to match. It does not change branches.
+   */
    
+   put "git checkout HEAD^" && kwote(relativePath) into someShell
    
-   --> Git | Props
-   -
-   getprop script_CommitComment
-      put the long id of the target into scriptObject
-      put autoCommitComment (scriptObject) into commitComment
-      return commitComment
-   end script_CommitComment
+   git_SetFull
+   put git_GetCheckoutFolder (someFile) into pGitRootFolder
+   put git_ExecuteShellCommand (someShell, pGitRootFolder) into shellResult
+   return shellResult
+end git_RestoreFile
+
+command git_CheckoutRevision relativePath, commitHash
+   -- check out and old version of a file or entire folder
+   -- put "git checkout" && commitHash && kwote(relativePath) into someShell
+   put git_ConstructCheckoutCommand (relativePath, commitHash) into someShell
+   put git_ExecuteShellCommand (someShell) into shellResult
+   return shellResult
+end git_CheckoutRevision
+
+function git_ConstructCheckoutCommand relativePath, commitHash
+   -- needs to be called from git root
+   -- or relatveipath needs to be relative to current folder
+   -- git checkout 0f3165fea876ebfa537e5a16f5c505a846e2c7ee -- opn_Plugins/opn_Text/rev/template/
+   shell_BashParamEscape relativePath
+   put "git checkout" && commitHash && "--" && relativePath into someShell
+   return someShell
+end git_ConstructCheckoutCommand
+
+
+--> GIT | Stash
+-
+function git_ListStashes
+   put git_StashArray() into stashArray
+   return keys(stashArray)
+end git_ListStashes
+
+function git_StashArray
+   /*
+   List the stashes that you currently have. 
+   Each stash is listed with its name (e.g. stash@{0} is the latest stash, stash@{1}  is the one before, etc.), 
+   the name of the branch that was current when the stash was made, 
+   and a short description of the commit the stash was based on.
    
-   getprop git_FileIsTracked
-      -- not sure the fastest way to do this
-      -- timer_Start "git_FileIsTracked"
-      put the git_Folder of the target into checkoutFolder
-      -- put git_GetFileLog (someFile) is empty into someBoolean -- takes about a second
-      -- timer_Stop "git_FileIsTracked"
-      return someBoolean
-   end git_FileIsTracked
+   stash@{0}: WIP on submit: 6ebd0e2... Update git-stash documentation
+   stash@{1}: On master: 9cc0589... Add git-stash
    
-   setprop git_FileIsTracked someBoolean
-      put the script_File of the target into someFile
-      if someBoolean is true then
-         git_AddFile someFile
-      else
-         -- can't undo it?
+   The command takes options applicable to the git log command to control what is shown and how. See git-log(1).
+   */
+   
+   git_ExecuteShell "git stash list"
+   put the result into gitResult
+   repeat for each line stashLine in gitResult
+      set the itemdelimiter to ":"
+      put item 1 of stashLine into stashName
+      put word 1 to -1 of item 2 of stashLine into stashArray [stashName]["stashBranch"]
+      put word 1 to -1 of item 2 of stashLine into stashArray [stashName]["stashComment"]
+   end repeat
+   return stashArray
+end git_StashArray
+
+
+--> GIT
+-
+function git_CurrentBranchName checkoutFolder
+   put git_ExecuteShellCommand ("git branch", checkoutFolder) into shellResult
+   repeat for each line someLine in shellResult
+      if word 1 of someLine = "*" then
+         return word 2 to -1 of someLine
       end if
-   end git_FileIsTracked
+   end repeat
+   return empty
+end git_CurrentBranchName
+
+function git_SearchRepository grepString
+   put "git grep --text -i" && kwote (grepString, "'") into someShell
+   put git_ExecuteShellCommand (someShell) into shellResult
+   return shellResult
+end git_SearchRepository
+
+function git_Searchlog @searchString
+   /*
+   -S<string>
+   Look for differences that introduce or remove an instance of <string>. Note that this is different
+   than the string simply appearing in diff output; see the pickaxe entry in gitdiffcore(7) for more
+   details.
+   */
    
-   getprop stack_IsLoaded
-      put the stack_Object of the target into stackObject
-      put stack_GetIsLoaded (stackObject) into someBoolean
-      return someBoolean
-   end stack_IsLoaded
+   if searchString is empty then put lcw_Ask("Search log for string...") into searchString
+   put "git log --pretty=oneline -S" & kwote(searchString, "'") into someShell
+   -- display_Lines someShell
+   set the cursor to watch
+   put git_ExecuteShellCommand(someShell) into shellResult
+   return shellResult
+end git_Searchlog
+
+
+--> GIT | Files
+-
+command git_RenameFile sourceFile, destFile
+   -- will do folders as well
+   put sourceFile into bashSourceFile
+   shell_BashParamEscape bashSourceFile
+   put destFile into bashDestFile
+   shell_BashParamEscape bashDestFile
    
-   getprop stack_IsUsed
-      put the stack_Name of the target into stackName
-      put stack_GetIsUsed (stackName) into someBoolean
-      return someBoolean
-   end stack_IsUsed
+   put "git mv" into someShell
+   put space & bashSourceFile after someShell
+   put space & bashDestFile after someShell
    
-   getprop git_MetaDataArray
-      put the git_CommitHash of the target into commitHash
-      put git_BlobHashInfo (commitHash) into logText
-      put git_ExtractLogMetadataArray (logText) into metadataArray
-      return metadataArray
-   end git_MetaDataArray
+   put git_ExecuteShellCommand(someShell) into shellResult
    
-   getprop git_LastLog
-      put the long id of the target into someObject
-      get git_GetRevisionHistory (empty, someObject)
-      return it
-   end git_LastLog
-   
-   getprop git_StackHashLog [commitHash]
-      put the git_RelativeFile of the target into relativeFile
-      put git_StackHashLog (relativeFile, commitHash) into gitLog
-      return gitLog
-   end git_StackHashLog
-   
-   getprop git_CommitHash [pBackNum]
-      put the git_RelativeFile of the target into relativePath
-      put git_GetCommitFileHash (relativePath, pBackNum) into commitHash
-      return commitHash
-   end git_CommitHash
-   
-   getprop git_ScriptHash [pBackNum]
-      -- will often be commited at the same time as the stack
-      -- so often eqauls git_CommitHash
-      
-      put the script_RelativeFile of the target into relativePath
-      put git_GetCommitFileHash (relativePath, pBackNum) into commitHash
-      return commitHash
-   end git_ScriptHash
-   
-   getprop git_ScriptFileLog
-      put the script_File of the target into someFile
-      put git_GetFileLog (someFile) into someLog
-      return someLog
-   end git_ScriptFileLog
-   
-   getprop git_GetFileLog
-      put the stack_Name of the target into stackName
-      put the effective filename of stack stackName into someFile
-      put git_GetFileLog (someFile) into someLog
-      return someLog
-   end git_GetFileLog
-   
-   getprop git_BlobHash [commitHash]
-      put the git_StackTreeish [commitHash] of the target into stackTreeish
-      put git_BlobHashFromTreeish (stackTreeish) into blobHash
-      return blobHash
-   end git_BlobHash
-   
-   getprop git_StackTreeish [commitHash]
-      put the git_RelativeFile of the target into relativePath
-      if commitHash is empty then
-         return relativePath
-      else
-         return commitHash & ":" & relativePath
+   if shellResult is not empty then lcw_Notify shellResult, true
+   if shellResult begins with "fatal: " or shellResult begins with "error:" then
+      -- assume it is untracked (could check before) ?
+      if there is a file sourceFile and there is not a file destFile then
+         rename file sourceFile to destFile
       end if
-   end git_StackTreeish
+   end if
+   return shellResult
+end git_RenameFile
+
+command git_RenameFolder sourceFolder, destFolder
+   folder_Format sourceFolder
+   folder_Format destFolder
+   git_SetRelativePath sourceFolder
+   git_SetRelativePath destFolder
    
-   getprop git_RevisionStack [gitHashOrNum]
-      put the stack_Object of the target into stackObject
-      put the filename of stackObject into someFile
-      if someFile is empty then return empty
-      
-      put git_GetRootFolder() into baseFolder
-      file_SetRelativePath someFile, baseFolder
-      put git_GetLastRevision (someFile, gitHashOrNum) into binaryStackData
-      return binaryStackData
-   end git_RevisionStack
+   put "git mv" into someShell
+   -- put space &  "-f" after someShell -- Force renaming or moving of a file even if the target exists
+   -- put space &  "-n" after someShell -- Do nothing; only show what would happen
    
+   -- put space & kwote (sourceFolder) after someShell
+   -- put space & kwote (destFolder) after someShell
+   put space & sourceFolder after someShell
+   put space & destFolder after someShell
    
-   --> Git
-   -
-   command git_Pull
-      -- TO PULL A new BRANCH FROM A REMOTE REPOSITORY
-      -- put merge("git pull origin [[remoteBranch]]:[[newLocalBranch]]") into someShell
-      -- put "git pull" into someShell
-      -- put "git pull origin master" into someShell
-      put git_CurrentBranchName() into currentBranchName
-      put "git pull origin" && kwote (currentBranchName) into someShell
-      
-      put git_ExecuteShellCommand (someShell) into shellResult
-      display_Lines shellResult, someShell
-      put the result into displayView
-      set the menu_Title of displayView to "Global | Git | Pull | Menu"
-   end git_Pull
+   put git_ExecuteShellCommand(someShell) into shellResult
+   if shellResult is not empty then lcw_Notify shellResult, true
+   return shellResult
+end git_RenameFolder
+
+command git_DeleteFolder someFolder, pForce
+   /*
+   git rm Documentation/\*.txt
+         Removes all *.txt files from the index that are under the Documentation directory and any of its subdirectories.
    
-   command git_CommitScriptFile scriptObject
-      put the script of scriptObject into someScript
-      put autoCommitComment (scriptObject) into pCommitComment
-      if the optionkey is "Down" then
-         put lcw_Ask ("Describe your changes...", pCommitComment, false) into pCommitComment
+   Note that the asterisk * is quoted from the shell in this example; this lets git, and not the shell, expand the pathnames of files and subdirectories under the Documentation/ directory.
+   
+   git rm -f git-*.sh
+   Because this example lets the shell expand the asterisk (i.e. you are listing the files explicitly), it does not remove subdir/git-foo.sh.
+   */
+   
+   if there is not a folder someFolder then return "Error, folder does not exists!"
+   put someFolder into bashFolder
+   shell_BashParamEscape bashFolder
+   
+   if pForce is true then
+      put merge("git rm -fr -- [[bashFolder]]") into someShell
+   else
+      put merge("git rm -r -- [[bashFolder]]") into someShell
+   end if
+   put git_ExecuteShellCommand(someShell) into shellResult
+   
+   if shellResult begins with "fatal: pathspec '" or shellResult begins with "error:" then
+      -- fatal: pathspec 'opn_Plugins/opn_Text/colour/swatch/Beach' did not match any files
+      -- assume it is untracked (could check before) ?
+      if there is a folder someFolder then
+         -- delete folder someFolder
+         revDeleteFolder someFolder
       end if
-      file_CreateBinary someScript, scriptFile
-      return scriptFile
-   end git_CommitScriptfile
+      -- beep
+   end if
    
-   command git_RestoreFile relativePath
-      /*
-      $ git checkout HEAD^ path/to/file
-      replaces path/to/file by the contents it had in the commit HEAD^, 
-      and also updates the index to match. It does not change branches.
-      */
-      
-      put "git checkout HEAD^" && kwote(relativePath) into someShell
-      
-      git_SetFull
-      put git_GetCheckoutFolder (someFile) into pGitRootFolder
-      put git_ExecuteShellCommand (someShell, pGitRootFolder) into shellResult
-      return shellResult
-   end git_RestoreFile
-   
-   command git_CheckoutRevision relativePath, commitHash
-      -- check out and old version of a file or entire folder
-      -- put "git checkout" && commitHash && kwote(relativePath) into someShell
-      put git_ConstructCheckoutCommand (relativePath, commitHash) into someShell
-      put git_ExecuteShellCommand (someShell) into shellResult
-      return shellResult
-   end git_CheckoutRevision
-   
-   function git_ConstructCheckoutCommand relativePath, commitHash
-      -- needs to be called from git root
-      -- or relatveipath needs to be relative to current folder
-      -- git checkout 0f3165fea876ebfa537e5a16f5c505a846e2c7ee -- opn_Plugins/opn_Text/rev/template/
-      shell_BashParamEscape relativePath
-      put "git checkout" && commitHash && "--" && relativePath into someShell
-      return someShell
-   end git_ConstructCheckoutCommand
-   
-   
-   --> GIT | Stash
-   -
-   function git_ListStashes
-      put git_StashArray() into stashArray
-      return keys(stashArray)
-   end git_ListStashes
-   
-   function git_StashArray
-      /*
-      List the stashes that you currently have. 
-      Each stash is listed with its name (e.g. stash@{0} is the latest stash, stash@{1}  is the one before, etc.), 
-      the name of the branch that was current when the stash was made, 
-      and a short description of the commit the stash was based on.
-      
-      stash@{0}: WIP on submit: 6ebd0e2... Update git-stash documentation
-      stash@{1}: On master: 9cc0589... Add git-stash
-      
-      The command takes options applicable to the git log command to control what is shown and how. See git-log(1).
-      */
-      
-      git_ExecuteShell "git stash list"
-      put the result into gitResult
-      repeat for each line stashLine in gitResult
-         set the itemdelimiter to ":"
-         put item 1 of stashLine into stashName
-         put word 1 to -1 of item 2 of stashLine into stashArray [stashName]["stashBranch"]
-         put word 1 to -1 of item 2 of stashLine into stashArray [stashName]["stashComment"]
-      end repeat
-      return stashArray
-   end git_StashArray
-   
-   
-   --> GIT
-   -
-   function git_CurrentBranchName checkoutFolder
-      put git_ExecuteShellCommand ("git branch", checkoutFolder) into shellResult
-      repeat for each line someLine in shellResult
-         if word 1 of someLine = "*" then
-            return word 2 to -1 of someLine
-         end if
-      end repeat
+   return shellResult
+end git_DeleteFolder
+
+command git_DeleteInvisibleRepoFolder gitFolder
+   put gitFolder & ".git" into invisibleRepoFolder
+   if there is not a folder invisibleRepoFolder then
+      breakpoint
       return empty
-   end git_CurrentBranchName
+   end if
    
-   function git_SearchRepository grepString
-      put "git grep --text -i" && kwote (grepString, "'") into someShell
-      put git_ExecuteShellCommand (someShell) into shellResult
-      return shellResult
-   end git_SearchRepository
+   breakpoint -- check it does not delete the whole project???
+   revDeleteFolder invisibleRepoFolder
+   return invisibleRepoFolder
+end git_DeleteInvisibleRepoFolder
+
+function git_ScriptFile shortFileBit
+   put git_GetRootFolder() into rootFolder
+   return repository_ConstructScriptPath(shortFileBit, rootFolder)
+end git_ScriptFile
+
+command git_NormalizeTreeish @treeish
+   set the itemdelimiter to ":"
+   put item 1 of treeish into someHash
+   put item 2 of treeish into someFile
+   if someFile is not empty then
+      git_SetRelativePath someFile
+      shell_BashParamEscape someFile
+      put someFile into item 2 of treeish
+   end if
+end git_NormalizeTreeish
+
+
+--> GIT | Hash
+-
+function git_GetLastCommitHash relativePath
+   -- seems slow
+   shell_BashParamEscape relativePath
+   put merge("git rev-list -1 HEAD -- [[relativePath]]") into someShell
+   put git_ExecuteShellCommand(someShell) into shellResult
+   return shellResult
+end git_GetLastCommitHash
+
+function git_BlobHashFromTreeish treeish
+   put "git rev-parse" into someShell
+   put space & "--verify" after someShell
+   put space & treeish after someShell
+   put git_ExecuteShellCommand(someShell) into shellResult
+   return shellResult
+end git_BlobHashFromTreeish
+
+function git_CommitLogEntry someHash
+   -- needs to be a commit, or maybe a tree?
+   put "git log --stat -n1" into someShell
+   put space & someHash after someShell
+   put git_ExecuteShellCommand(someShell) into logText
+   return logText
+end git_CommitLogEntry
+
+function git_CommitedFiles commitHash, pHashOutline
+   -- put merge("git diff --name-only [[commitHash]]^ [[commitHash]]") into someShell
+   put "git show --name-status --format=%b" && commitHash into someShell
+   put git_ExecuteShellCommand(someShell) into logText
+   -- display_Lines logText
    
-   function git_Searchlog @searchString
-      /*
-      -S<string>
-      Look for differences that introduce or remove an instance of <string>. Note that this is different
-      than the string simply appearing in diff output; see the pickaxe entry in gitdiffcore(7) for more
-      details.
-      */
-      
-      if searchString is empty then put lcw_Ask("Search log for string...") into searchString
-      put "git log --pretty=oneline -S" & kwote(searchString, "'") into someShell
-      -- display_Lines someShell
-      set the cursor to watch
-      put git_ExecuteShellCommand(someShell) into shellResult
-      return shellResult
-   end git_Searchlog
-   
-   
-   --> GIT | Files
-   -
-   command git_RenameFile sourceFile, destFile
-      -- will do folders as well
-      put sourceFile into bashSourceFile
-      shell_BashParamEscape bashSourceFile
-      put destFile into bashDestFile
-      shell_BashParamEscape bashDestFile
-      
-      put "git mv" into someShell
-      put space & bashSourceFile after someShell
-      put space & bashDestFile after someShell
-      
-      put git_ExecuteShellCommand(someShell) into shellResult
-      
-      if shellResult is not empty then lcw_Notify shellResult, true
-      if shellResult begins with "fatal: " or shellResult begins with "error:" then
-         -- assume it is untracked (could check before) ?
-         if there is a file sourceFile and there is not a file destFile then
-            rename file sourceFile to destFile
+   repeat for each line relativeFile in logText
+      put word 1 of relativeFile into modType
+      if modType is among the items of "M,A,D" then
+         delete word 1 of relativeFile
+         if pHashOutline is true then
+            put kwote(commitHash & ":" & relativeFile) into treeish
+            put git_BlobHashFromTreeish (treeish) into blobHash
+            put html_ConstructNameLink(relativeFile, blobHash) & CR after commitedFiles
+         else
+            put relativeFile & CR after commitedFiles
          end if
       end if
-      return shellResult
-   end git_RenameFile
+   end repeat
+   delete char -1 of commitedFiles
+   return commitedFiles
+end git_CommitedFiles
+
+function git_GetCommitFileHash relativePath, pBackNum
+   if pBackNum is empty then put "1" into pBackNum
+   put git_ReverseFileHashes (relativePath, pBackNum) into shellResult
+   return line - 1 of shellResult
+end git_GetCommitFileHash
+
+function git_ListFiles
+   put "git ls-files --stage" into someShell
+   put git_ExecuteShellCommand(someShell) into shellResult
+   return shellResult
+end git_ListFiles
+
+function git_ReverseFileHashes relativePath, pMaxNum
+   if pMaxNum is empty then put "10" into pMaxNum
+   put merge("git rev-list -[[pMaxNum]] HEAD --") && kwote(relativePath) into someShell
+   put git_ExecuteShellCommand(someShell) into shellResult
+   return shellResult
+end git_ReverseFileHashes
+
+command git_HardReset
+   put "git reset --hard HEAD" into someShell
+   put git_ExecuteShellCommand (someShell) into shellResult
+   return shellResult
+end git_HardReset
+
+
+--> Git | Status
+-
+function git_StatusArray
+   put git_StatusOutline() into someOutline
+   put array_FromOutline (someOutline) into someArray
+   return someArray
+end git_StatusArray
+
+function git_StatusOutline
+   put git_FetchStatusTable() into gitTable
+   put git_ConstructStatusOutline (gitTable) into someOutline
+   return someOutline
+end git_StatusOutline
+
+function git_FetchStatusTable pCheckoutFolder
+   git_ExecuteShell "git status", pCheckoutFolder
+   return the result
+end git_FetchStatusTable
+
+
+--> Git | Log
+-
+function git_GetRevisionHistory gitHash, pObject, pShowDiff
+   put "git log --stat -n1" into someShell
+   if pShowDiff is not false then put space & "-p" after someShell
+   -- put space & "--graph" after someShell
    
-   command git_RenameFolder sourceFolder, destFolder
-      folder_Format sourceFolder
-      folder_Format destFolder
-      git_SetRelativePath sourceFolder
-      git_SetRelativePath destFolder
-      
-      put "git mv" into someShell
-      -- put space &  "-f" after someShell -- Force renaming or moving of a file even if the target exists
-      -- put space &  "-n" after someShell -- Do nothing; only show what would happen
-      
-      -- put space & kwote (sourceFolder) after someShell
-      -- put space & kwote (destFolder) after someShell
-      put space & sourceFolder after someShell
-      put space & destFolder after someShell
-      
-      put git_ExecuteShellCommand(someShell) into shellResult
-      if shellResult is not empty then lcw_Notify shellResult, true
-      return shellResult
-   end git_RenameFolder
+   if gitHash is not empty then put space & gitHash after someShell
+   if pObject is not empty then
+      put the script_RelativeFile of pObject into objectFile
+      put space & kwote(objectFile) after someShell
+   end if
    
-   command git_DeleteFolder someFolder, pForce
-      /*
-      git rm Documentation/\*.txt
-            Removes all *.txt files from the index that are under the Documentation directory and any of its subdirectories.
-      
-      Note that the asterisk * is quoted from the shell in this example; this lets git, and not the shell, expand the pathnames of files and subdirectories under the Documentation/ directory.
-      
-      git rm -f git-*.sh
-      Because this example lets the shell expand the asterisk (i.e. you are listing the files explicitly), it does not remove subdir/git-foo.sh.
-      */
-      
-      if there is not a folder someFolder then return "Error, folder does not exists!"
-      put someFolder into bashFolder
-      shell_BashParamEscape bashFolder
-      
-      if pForce is true then
-         put merge("git rm -fr -- [[bashFolder]]") into someShell
-      else
-         put merge("git rm -r -- [[bashFolder]]") into someShell
+   put git_ExecuteShellCommand(someShell) into logText
+   return logText
+end git_GetRevisionHistory
+
+function git_LogFormats
+   /*
+   --pretty[=<format>]
+   Pretty-print the contents of the commit logs in a given format, where <format> can be one of oneline,
+   short, medium, full, fuller, email, raw and format:<string>. When omitted, the format defaults to
+   medium.
+   
+   Note: you can specify the default pretty format in the repository configuration (see git-config(1)).
+   */
+   return "oneline,short,medium,full,fuller,email,raw"
+end git_LogFormats
+
+function git_ExtractLogMetadataArray logText
+   set the itemdelimiter to ":"
+   put word 2 of line 1 of logText into metadataArray ["commitHash"]
+   put word 1 to -1 of item 2 of line 2 of logText into metadataArray ["commitAuthor"]
+   put word 1 to -1 of item 2 of line 3 of logText into metadataArray ["commitDate"]
+   
+   return metadataArray
+end git_ExtractLogMetadataArray
+
+
+--> GIT | Treeish
+-
+function git_ConstructTreeish relativePath, gitHashOrNum
+   put merge("git show [[gitHashOrNum]]:[[relativePath]]") into someShell
+   return someShell
+end git_ConstructTreeish
+
+
+--> GIT | Projects
+-
+command git_Clone gitURL, pNewRepoFolder, pFolderName
+   put defaultfolder into oFolder
+   if pNewRepoFolder is empty then
+      answer folder "Choose Git Folder" with git_GetRootFolder()
+      if the result is "Cancel" then exit to top
+      put it into pNewRepoFolder
+   else
+      folder_CreateNested pNewRepoFolder
+   end if
+   
+   set the defaultfolder to pNewRepoFolder   
+   put "git clone" && gitURL into someShell
+   if pFolderName is not empty then
+      shell_BashParamEscape pFolderName
+      put space && pFolderName after someShell
+   end if
+   put git_ExecuteShellCommand (someShell, pNewRepoFolder) into shellResult
+   if shellResult is not empty then
+      lcw_Notify shellResult, true
+   end if
+   set the defaultfolder to oFolder   
+   return shellResult
+end git_Clone
+
+command git_CloneAndFetch gitURL, pNewRepoFolder
+   /*
+   Clones a repository into a newly created directory, creates remote-tracking branches for each branch in the cloned repository (visible
+   using git branch -r), and creates and checks out an initial branch that is forked from the cloned repository's currently active branch.
+   
+   -- After the clone, a plain git fetch without arguments will update all the remote-tracking branches, and a git pull without arguments will
+   in addition merge the remote master branch into the current master branch, if any (this is untrue when "--single-branch" is given; see
+   below).
+   
+   This default configuration is achieved by creating references to the remote branch heads under refs/remotes/origin and by initializing
+   remote.origin.url and remote.origin.fetch configuration variables.
+   */
+   
+   git_Clone gitURL, pNewRepoFolder
+   put the result into oFolders
+   
+   put the folders into nFolders
+   put empty into clonedFolder
+   repeat for each line testFolder in nFolders
+      if testFolder is not among the lines of oFolders then
+         # Changes the active directory in the prompt to the newly cloned "Spoon-Knife" directory
+         -- cd Spoon-Knife
+         put the defaultfolder & slash & testFolder & slash into clonedFolder
+         set the defaultfolder to clonedFolder
+         exit repeat
       end if
-      put git_ExecuteShellCommand(someShell) into shellResult
-      
-      if shellResult begins with "fatal: pathspec '" or shellResult begins with "error:" then
-         -- fatal: pathspec 'opn_Plugins/opn_Text/colour/swatch/Beach' did not match any files
-         -- assume it is untracked (could check before) ?
-         if there is a folder someFolder then
-            -- delete folder someFolder
-            revDeleteFolder someFolder
-         end if
-         -- beep
+   end repeat
+   if clonedFolder is empty then
+      answer warning "Failed to find new cloned repository folder!"
+      breakpoint
+      -- exit to top
+   end if
+   
+   # Assigns the original repository to a remote called "upstream"
+   put "git remote add upstream" && gitURL into someShell
+   put git_ExecuteShellCommand (someShell, clonedFolder) into shellResult
+   if shellResult is not empty then
+      display_Lines shellResult, "GIT error adding upstream remote"
+      breakpoint
+      -- exit to top
+   end if
+   
+   # Pulls in changes not present in your local repository, without modifying your files
+   put "git fetch upstream" into someShell
+   put git_ExecuteShellCommand (someShell, clonedFolder) into shellResult
+   if shellResult is not empty then
+      display_Lines shellResult, "GIT fetching upstream remote"
+      -- exit to top
+   end if
+end git_CloneAndFetch
+
+
+--> Repo
+-
+function repo_FetchStatusOutline
+   put url "http://www.rev-co.de/cgi-bin/git_Status.cgi" into someOutline
+   return someOutline
+end repo_FetchStatusOutline
+
+function repository_ConstructScriptPath shortFileBit, rootFolder
+   put rootFolder & "opn_Plugins/" into opnPluginsFolder
+   put opnPluginsFolder & "opn_Text/rev/" into revTextFolder
+   put revTextFolder & shortFileBit into scriptTextFile
+   
+   set the itemdelimiter to "/"
+   if char -1 of scriptTextFile = "/" then
+      put scriptTextFile into testFolder
+   else
+      put item 1 to -2 of scriptTextFile into testFolder
+   end if
+   folder_CreateNested testFolder
+   
+   return scriptTextFile
+end repository_ConstructScriptPath
+
+command repository_SetCommitComment @someComment
+   if someComment is empty then
+      ask "Give a comment to this commit..." with "auto opn commit"
+      if it is empty then
+         -- lcw_Notify "Sorry, I did not commit these changes as the comment was empty!"
+         exit to top
       end if
-      
-      return shellResult
-   end git_DeleteFolder
+      put it into someComment
+   end if
+end repository_SetCommitComment
+
+
+--> Repository | Local | Event | Helpers
+-
+command repository_Add someFile, fileIsNew, pCommitComment
+   -- file has been created or updated
+   switch repository_GetType()
+      case "svn"
+         if fileIsNew is true then svn_Add someFile
+         break
+      case "git"
+         if pCommitComment is empty then put "opn auto-commit" into pCommitComment
+         
+         -- if fileIsNew is true then git_AddFile someFile
+         git_CommitFile someFile, pCommitComment
+         break
+   end switch
+end repository_Add
+
+
+--> Deps | File
+-
+command file_CreateBinary binaryText, pFile
+   /*
+   Rev uses unix style text internally (numToChar(10) for line endings)
+   That is "fld "Text" contains numtochar(10) = true"
    
-   command git_DeleteInvisibleRepoFolder gitFolder
-      put gitFolder & ".git" into invisibleRepoFolder
-      if there is not a folder invisibleRepoFolder then
-         breakpoint
-         return empty
-      end if
-      
-      breakpoint -- check it does not delete the whole project???
-      revDeleteFolder invisibleRepoFolder
-      return invisibleRepoFolder
-   end git_DeleteInvisibleRepoFolder
+   If written to a file on a Mac, using URL "file:", they're automatically translated to Macs native numToChar(13).
+   if using URL "binfile:", no translation happens, so numToChar(10) is preserved. 
+   */
    
-   function git_ScriptFile shortFileBit
-      put git_GetRootFolder() into rootFolder
-      return repository_ConstructScriptPath(shortFileBit, rootFolder)
-   end git_ScriptFile
+   if pFile is empty then
+      put the tempname into pFile
+   end if
+   put folder_Above (pFile) into someFolder
+   folder_CreateNested someFolder
+   put binaryText into url ("binfile:" & pFile)
+   return pFile
+end file_CreateBinary
+
+command file_CreateText someText, pFile
+   if pFile is empty then
+      put the tempname into pFile
+   end if
+   put folder_Above (pFile) into someFolder
+   folder_CreateNested someFolder
+   put someText into url ("file:" & pFile)
+   return pFile
+end file_CreateText
+
+command file_Delete someFile
+   -- could check if versioned and use built in repository commands to delete file
+   delete file someFile
+   return the result
+end file_Delete
+
+function file_IsWithinOpn someFile
+   put library_PluginFolder() into rootFolder
+   return someFile contains rootFolder
+end file_IsWithinOpn
+
+function file_IsVersioned someFile
+   -- was "file_IsUnderSvn"
+   switch repository_GetType() 
+      case "svn"
+         put svn_GetRootFolder() into rootFolder
+         return someFile contains rootFolder
+      case "git"
+         put git_GetRootFolder() into rootFolder
+         return someFile contains rootFolder
+      default
+         return false
+   end switch
+end file_IsVersioned
+
+
+--> Private
+-
+private function autoCommitComment scriptObject, textLine
+   put the internet date into someDate
+   delete word -1 of someDate
+   put someDate & ":  changed script" && the mobile_Name of scriptObject into someSuggestion
+   put CR after someSuggestion
+   put CR after someSuggestion
    
-   command git_NormalizeTreeish @treeish
-      set the itemdelimiter to ":"
-      put item 1 of treeish into someHash
-      put item 2 of treeish into someFile
-      if someFile is not empty then
-         git_SetRelativePath someFile
-         shell_BashParamEscape someFile
-         put someFile into item 2 of treeish
-      end if
-   end git_NormalizeTreeish
-   
-   
-   --> GIT | Hash
-   -
-   function git_GetLastCommitHash relativePath
-      -- seems slow
-      shell_BashParamEscape relativePath
-      put merge("git rev-list -1 HEAD -- [[relativePath]]") into someShell
-      put git_ExecuteShellCommand(someShell) into shellResult
-      return shellResult
-   end git_GetLastCommitHash
-   
-   function git_BlobHashFromTreeish treeish
-      put "git rev-parse" into someShell
-      put space & "--verify" after someShell
-      put space & treeish after someShell
-      put git_ExecuteShellCommand(someShell) into shellResult
-      return shellResult
-   end git_BlobHashFromTreeish
-   
-   function git_CommitLogEntry someHash
-      -- needs to be a commit, or maybe a tree?
-      put "git log --stat -n1" into someShell
-      put space & someHash after someShell
-      put git_ExecuteShellCommand(someShell) into logText
-      return logText
-   end git_CommitLogEntry
-   
-   function git_CommitedFiles commitHash, pHashOutline
-      -- put merge("git diff --name-only [[commitHash]]^ [[commitHash]]") into someShell
-      put "git show --name-status --format=%b" && commitHash into someShell
-      put git_ExecuteShellCommand(someShell) into logText
-      -- display_Lines logText
-      
-      repeat for each line relativeFile in logText
-         put word 1 of relativeFile into modType
-         if modType is among the items of "M,A,D" then
-            delete word 1 of relativeFile
-            if pHashOutline is true then
-               put kwote(commitHash & ":" & relativeFile) into treeish
-               put git_BlobHashFromTreeish (treeish) into blobHash
-               put html_ConstructNameLink(relativeFile, blobHash) & CR after commitedFiles
-            else
-               put relativeFile & CR after commitedFiles
-            end if
-         end if
-      end repeat
-      delete char -1 of commitedFiles
-      return commitedFiles
-   end git_CommitedFiles
-   
-   function git_GetCommitFileHash relativePath, pBackNum
-      if pBackNum is empty then put "1" into pBackNum
-      put git_ReverseFileHashes (relativePath, pBackNum) into shellResult
-      return line - 1 of shellResult
-   end git_GetCommitFileHash
-   
-   function git_ListFiles
-      put "git ls-files --stage" into someShell
-      put git_ExecuteShellCommand(someShell) into shellResult
-      return shellResult
-   end git_ListFiles
-   
-   function git_ReverseFileHashes relativePath, pMaxNum
-      if pMaxNum is empty then put "10" into pMaxNum
-      put merge("git rev-list -[[pMaxNum]] HEAD --") && kwote(relativePath) into someShell
-      put git_ExecuteShellCommand(someShell) into shellResult
-      return shellResult
-   end git_ReverseFileHashes
-   
-   command git_HardReset
-      put "git reset --hard HEAD" into someShell
-      put git_ExecuteShellCommand (someShell) into shellResult
-      return shellResult
-   end git_HardReset
-   
-   
-   --> Git | Status
-   -
-   function git_StatusArray
-      put git_StatusOutline() into someOutline
-      put array_FromOutline (someOutline) into someArray
-      return someArray
-   end git_StatusArray
-   
-   function git_StatusOutline
-      put git_FetchStatusTable() into gitTable
-      put git_ConstructStatusOutline (gitTable) into someOutline
-      return someOutline
-   end git_StatusOutline
-   
-   function git_FetchStatusTable pCheckoutFolder
-      git_ExecuteShell "git status", pCheckoutFolder
-      return the result
-   end git_FetchStatusTable
-   
-   
-   --> Git | Log
-   -
-   function git_GetRevisionHistory gitHash, pObject, pShowDiff
-      put "git log --stat -n1" into someShell
-      if pShowDiff is not false then put space & "-p" after someShell
-      -- put space & "--graph" after someShell
-      
-      if gitHash is not empty then put space & gitHash after someShell
-      if pObject is not empty then
-         put the script_RelativeFile of pObject into objectFile
-         put space & kwote(objectFile) after someShell
-      end if
-      
-      put git_ExecuteShellCommand(someShell) into logText
-      return logText
-   end git_GetRevisionHistory
-   
-   function git_LogFormats
-      /*
-      --pretty[=<format>]
-      Pretty-print the contents of the commit logs in a given format, where <format> can be one of oneline,
-      short, medium, full, fuller, email, raw and format:<string>. When omitted, the format defaults to
-      medium.
-      
-      Note: you can specify the default pretty format in the repository configuration (see git-config(1)).
-      */
-      return "oneline,short,medium,full,fuller,email,raw"
-   end git_LogFormats
-   
-   function git_ExtractLogMetadataArray logText
-      set the itemdelimiter to ":"
-      put word 2 of line 1 of logText into metadataArray ["commitHash"]
-      put word 1 to -1 of item 2 of line 2 of logText into metadataArray ["commitAuthor"]
-      put word 1 to -1 of item 2 of line 3 of logText into metadataArray ["commitDate"]
-      
-      return metadataArray
-   end git_ExtractLogMetadataArray
-   
-   
-   --> GIT | Treeish
-   -
-   function git_ConstructTreeish relativePath, gitHashOrNum
-      put merge("git show [[gitHashOrNum]]:[[relativePath]]") into someShell
-      return someShell
-   end git_ConstructTreeish
-   
-   
-   --> GIT | Projects
-   -
-   command git_Clone gitURL, pNewRepoFolder, pFolderName
-      put defaultfolder into oFolder
-      if pNewRepoFolder is empty then
-         answer folder "Choose Git Folder" with git_GetRootFolder()
-         if the result is "Cancel" then exit to top
-         put it into pNewRepoFolder
-      else
-         folder_CreateNested pNewRepoFolder
-      end if
-      
-      set the defaultfolder to pNewRepoFolder   
-      put "git clone" && gitURL into someShell
-      if pFolderName is not empty then
-         shell_BashParamEscape pFolderName
-         put space && pFolderName after someShell
-      end if
-      put git_ExecuteShellCommand (someShell, pNewRepoFolder) into shellResult
-      if shellResult is not empty then
-         lcw_Notify shellResult, true
-      end if
-      set the defaultfolder to oFolder   
-      return shellResult
-   end git_Clone
-   
-   command git_CloneAndFetch gitURL, pNewRepoFolder
-      /*
-      Clones a repository into a newly created directory, creates remote-tracking branches for each branch in the cloned repository (visible
-      using git branch -r), and creates and checks out an initial branch that is forked from the cloned repository's currently active branch.
-      
-      -- After the clone, a plain git fetch without arguments will update all the remote-tracking branches, and a git pull without arguments will
-      in addition merge the remote master branch into the current master branch, if any (this is untrue when "--single-branch" is given; see
-      below).
-      
-      This default configuration is achieved by creating references to the remote branch heads under refs/remotes/origin and by initializing
-      remote.origin.url and remote.origin.fetch configuration variables.
-      */
-      
-      git_Clone gitURL, pNewRepoFolder
-      put the result into oFolders
-      
-      put the folders into nFolders
-      put empty into clonedFolder
-      repeat for each line testFolder in nFolders
-         if testFolder is not among the lines of oFolders then
-            # Changes the active directory in the prompt to the newly cloned "Spoon-Knife" directory
-            -- cd Spoon-Knife
-            put the defaultfolder & slash & testFolder & slash into clonedFolder
-            set the defaultfolder to clonedFolder
-            exit repeat
-         end if
-      end repeat
-      if clonedFolder is empty then
-         answer warning "Failed to find new cloned repository folder!"
-         breakpoint
-         -- exit to top
-      end if
-      
-      # Assigns the original repository to a remote called "upstream"
-      put "git remote add upstream" && gitURL into someShell
-      put git_ExecuteShellCommand (someShell, clonedFolder) into shellResult
-      if shellResult is not empty then
-         display_Lines shellResult, "GIT error adding upstream remote"
-         breakpoint
-         -- exit to top
-      end if
-      
-      # Pulls in changes not present in your local repository, without modifying your files
-      put "git fetch upstream" into someShell
-      put git_ExecuteShellCommand (someShell, clonedFolder) into shellResult
-      if shellResult is not empty then
-         display_Lines shellResult, "GIT fetching upstream remote"
-         -- exit to top
-      end if
-   end git_CloneAndFetch
-   
-   
-   --> Repo
-   -
-   function repo_FetchStatusOutline
-      put url "http://www.rev-co.de/cgi-bin/git_Status.cgi" into someOutline
-      return someOutline
-   end repo_FetchStatusOutline
-   
-   function repository_ConstructScriptPath shortFileBit, rootFolder
-      put rootFolder & "opn_Plugins/" into opnPluginsFolder
-      put opnPluginsFolder & "opn_Text/rev/" into revTextFolder
-      put revTextFolder & shortFileBit into scriptTextFile
-      
-      set the itemdelimiter to "/"
-      if char -1 of scriptTextFile = "/" then
-         put scriptTextFile into testFolder
-      else
-         put item 1 to -2 of scriptTextFile into testFolder
-      end if
-      folder_CreateNested testFolder
-      
-      return scriptTextFile
-   end repository_ConstructScriptPath
-   
-   command repository_SetCommitComment @someComment
-      if someComment is empty then
-         ask "Give a comment to this commit..." with "auto opn commit"
-         if it is empty then
-            -- lcw_Notify "Sorry, I did not commit these changes as the comment was empty!"
-            exit to top
-         end if
-         put it into someComment
-      end if
-   end repository_SetCommitComment
-   
-   
-   --> Repository | Local | Event | Helpers
-   -
-   command repository_Add someFile, fileIsNew, pCommitComment
-      -- file has been created or updated
-      switch repository_GetType()
-         case "svn"
-            if fileIsNew is true then svn_Add someFile
-            break
-         case "git"
-            if pCommitComment is empty then put "opn auto-commit" into pCommitComment
-            
-            -- if fileIsNew is true then git_AddFile someFile
-            git_CommitFile someFile, pCommitComment
-            break
-      end switch
-   end repository_Add
-   
-   
-   --> Deps | File
-   -
-   command file_CreateBinary binaryText, pFile
-      /*
-      Rev uses unix style text internally (numToChar(10) for line endings)
-      That is "fld "Text" contains numtochar(10) = true"
-      
-      If written to a file on a Mac, using URL "file:", they're automatically translated to Macs native numToChar(13).
-      if using URL "binfile:", no translation happens, so numToChar(10) is preserved. 
-      */
-      
-      if pFile is empty then
-         put the tempname into pFile
-      end if
-      put folder_Above (pFile) into someFolder
-      folder_CreateNested someFolder
-      put binaryText into url ("binfile:" & pFile)
-      return pFile
-   end file_CreateBinary
-   
-   command file_CreateText someText, pFile
-      if pFile is empty then
-         put the tempname into pFile
-      end if
-      put folder_Above (pFile) into someFolder
-      folder_CreateNested someFolder
-      put someText into url ("file:" & pFile)
-      return pFile
-   end file_CreateText
-   
-   command file_Delete someFile
-      -- could check if versioned and use built in repository commands to delete file
-      delete file someFile
-      return the result
-   end file_Delete
-   
-   function file_IsWithinOpn someFile
-      put library_PluginFolder() into rootFolder
-      return someFile contains rootFolder
-   end file_IsWithinOpn
-   
-   function file_IsVersioned someFile
-      -- was "file_IsUnderSvn"
-      switch repository_GetType() 
-         case "svn"
-            put svn_GetRootFolder() into rootFolder
-            return someFile contains rootFolder
-         case "git"
-            put git_GetRootFolder() into rootFolder
-            return someFile contains rootFolder
-         default
-            return false
-      end switch
-   end file_IsVersioned
-   
-   
-   --> Private
-   -
-   private function autoCommitComment scriptObject, textLine
-      put the internet date into someDate
-      delete word -1 of someDate
-      put someDate & ":  changed script" && the mobile_Name of scriptObject into someSuggestion
-      put CR after someSuggestion
-      put CR after someSuggestion
-      
-      if textLine is empty then put "OPN auto-commit" into textLine
-      put textLine after someSuggestion
-      return someSuggestion
-   end autoCommitComment
-   
+   if textLine is empty then put "OPN auto-commit" into textLine
+   put textLine after someSuggestion
+   return someSuggestion
+end autoCommitComment
